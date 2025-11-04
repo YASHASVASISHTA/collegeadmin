@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin: Upload Test - Exam Portal</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS Library for Excel Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Supabase Client Library for Image Storage -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
+    <!-- Select2 Library for nice multi-select dropdowns -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        /* Custom Styles (Reduced) */
+        :root {
+            --primary: #15803d; /* Tailwind green-700 */
+            --primary-foreground: #ffffff;
+            --card: #ffffff;
+            --border: #e5e7eb; /* Tailwind gray-200 */
+            --muted: #f9fafb; /* Tailwind gray-50 */
+            --muted-foreground: #6b7280; /* Tailwind gray-500 */
+            --destructive: #b91c1c; /* Tailwind red-700 */
+            --destructive-hover: #991b1b; /* Tailwind red-800 */
+        }
+        /* Keep specific component styles not easily replicated by Tailwind */
+         #auth-status p { /* Center the auth status text */
+            text-align: center;
+            padding: 4rem 0; /* Add padding vertically */
+            font-size: 1.25rem;
+            color: var(--muted-foreground);
+         }
+
+
+        .spinner { display: inline-block; width: 1.25rem; height: 1.25rem; border: 3px solid rgba(255, 255, 255, 0.3); border-top-color: var(--primary-foreground); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        pre {
+            background-color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; white-space: pre-wrap;
+            word-wrap: break-word; font-family: 'Courier New', Courier, monospace; font-size: 0.875rem;
+            border: 1px solid #cbd5e1; max-height: 400px; overflow-y: auto;
+        }
+
+        /* Select2 Styles Adjustments */
+        .select2-container .select2-selection--multiple {
+            border: 1px solid var(--border) !important;
+            border-radius: 0.375rem !important;
+            padding: 0.3rem !important;
+            min-height: 44px;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice {
+            background-color: var(--primary) !important;
+            border: 1px solid #14532d !important;
+            color: white !important;
+            border-radius: 0.25rem !important;
+        }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+            color: #dcfce7 !important;
+            margin-right: 5px !important;
+        }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+            color: white !important;
+        }
+        .select2-container--default.select2-container--focus .select2-selection--multiple {
+            border: 1px solid var(--primary) !important;
+            box-shadow: 0 0 0 2px rgba(21, 128, 61, 0.2) !important;
+        }
+        .select2-dropdown {
+            border: 1px solid var(--border) !important;
+            border-radius: 0.375rem !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        /* Ensure tab links clearly show active state */
+        .tab-link.active {
+             color: var(--primary);
+             border-color: var(--primary);
+             border-bottom-width: 3px; /* Ensure sufficient thickness */
+        }
+        .tab-link:not(.active) {
+            border-bottom-width: 3px;
+             border-color: transparent;
+        }
+
+        /* Success Modal Styles */
+        #success-modal {
+            transition: opacity 0.3s ease-in-out;
+        }
+        #success-modal.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-700">
+
+    <!-- Responsive Navigation Bar -->
+    <nav class="bg-white border-b border-gray-200 shadow-sm fixed top-0 left-0 right-0 z-50 h-16"> <!-- Added h-16 -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo/Brand -->
+                <div class="flex-shrink-0 flex items-center">
+                     <span class="text-xl font-bold text-green-700">Test Management Portal</span>
+                </div>
+
+                <!-- Desktop Menu & User Info -->
+                <div class="hidden md:flex md:items-center md:space-x-4">
+                    <a href="upload.html" class="text-green-700 border-b-2 border-green-700 px-3 py-2 text-sm font-medium" aria-current="page">Upload Tests</a>
+                    <a href="manage.html" class="text-gray-500 hover:text-gray-700 hover:border-b-2 hover:border-gray-300 px-3 py-2 text-sm font-medium">Manage Tests</a>
+                    
+                    <a href="user_guide.html" class="text-gray-500 hover:text-gray-700 hover:border-b-2 hover:border-gray-300 px-3 py-2 text-sm font-medium">User Guide</a>
+                    <span id="user-email-desktop" class="text-sm text-gray-500 ml-4"></span>
+                    <button type="button" id="logout-btn-desktop" class="ml-2 bg-red-700 hover:bg-red-800 text-white px-3 py-1.5 rounded-md text-sm font-medium transition duration-150 ease-in-out">Logout</button>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-button" type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500" aria-controls="mobile-menu" aria-expanded="false">
+                        <span class="sr-only">Open main menu</span>
+                        <!-- Hamburger Icon -->
+                        <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <!-- Close Icon (hidden by default) -->
+                        <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu, show/hide based on menu state. -->
+        <div class="md:hidden hidden" id="mobile-menu">
+            <div class="pt-2 pb-3 space-y-1 px-2 sm:px-3">
+                <a href="upload.html" class="bg-green-50 border-green-700 text-green-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium" aria-current="page">Upload Tests</a>
+                <a href="manage.html" class="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">Manage Tests</a>
+                <a href="user_guide.html" class="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">User Guide</a>
+            </div>
+            <div class="pt-4 pb-3 border-t border-gray-200 px-2 sm:px-3">
+                <div class="flex items-center px-2">
+                     <div class="ml-3">
+                        <div id="user-email-mobile" class="text-base font-medium text-gray-800"></div>
+                    </div>
+                </div>
+                <div class="mt-3 space-y-1">
+                    <button type="button" id="logout-btn-mobile" class="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Content Area with Padding Top -->
+    <div id="main-content" class="hidden pt-16">
+        <div class="container max-w-4xl mx-auto mt-8 mb-8 px-4"> <!-- Container for content -->
+            <div class="card bg-white border border-gray-200 rounded-lg shadow-sm mb-8">
+                <nav class="tabs flex border-b border-gray-200 bg-gray-100 rounded-t-lg">
+                    <!-- Tab Links -->
+                    <div class="tab-link active cursor-pointer px-6 py-4 font-semibold text-gray-500 transition-all duration-200 hover:text-green-600 data-[active]:text-green-700 data-[active]:border-green-700" data-tab="form" data-active>Create with Form</div>
+                    <div class="tab-link cursor-pointer px-6 py-4 font-semibold text-gray-500 transition-all duration-200 hover:text-green-600 data-[active]:text-green-700 data-[active]:border-green-700" data-tab="excel">Upload from Excel</div>
+                    <div class="tab-link cursor-pointer px-6 py-4 font-semibold text-gray-500 transition-all duration-200 hover:text-green-600 data-[active]:text-green-700 data-[active]:border-green-700" data-tab="json">Upload from JSON</div>
+                </nav>
+
+                <!-- Tab 1: Create with Form -->
+                <div id="form-content" class="tab-content p-6 md:p-8">
+
+                    <!-- Step 1: Configure Test -->
+                    <div id="form-step-1" class="border-b-2 border-dashed border-gray-200 pb-8 mb-8">
+                        <h2 class="text-xl font-semibold mb-2">Step 1: Configure Your Test</h2>
+                        <p class="text-sm text-gray-600 mb-6">Define the basic structure. This will generate the form fields below.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div class="form-group"><label for="config-title" class="block mb-1.5 font-medium text-sm">Test Title</label><input type="text" id="config-title" class="form-input w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" required></div>
+                            <div class="form-group">
+                                <label for="config-type" class="block mb-1.5 font-medium text-sm">Exam Type</label>
+                                <select id="config-type" class="form-select w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" required>
+                                    <option value="JEE">JEE</option>
+                                    <option value="NEET">NEET</option>
+                                    <option value="KCET">KCET</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="config-syllabus-type" class="block mb-1.5 font-medium text-sm">Syllabus Type</label>
+                                <select id="config-syllabus-type" class="form-select w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" required>
+                                    <option value="Chapterwise">Chapterwise</option>
+                                    <option value="Full Syllabus">Full Syllabus</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label for="config-negative-marks" class="block mb-1.5 font-medium text-sm">Negative Marks</label><input type="number" id="config-negative-marks" class="form-input w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" value="1" step="0.25" required></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="config-subjects" class="block mb-1.5 font-medium text-sm">Subjects</label>
+                            <select id="config-subjects" class="form-select" multiple="multiple" style="width: 100%;" required>
+                                <option value="Physics">Physics</option>
+                                <option value="Chemistry">Chemistry</option>
+                                <option value="Mathematics">Mathematics</option>
+                                <option value="Biology">Biology</option>
+                                <option value="Botany">Botany</option>
+                                <option value="Zoology">Zoology</option>
+                            </select>
+                        </div>
+
+                        <!-- Dynamic container -->
+                        <div id="subject-question-counts" class="hidden border-l-4 border-green-600 bg-gray-50 p-4 mt-6 rounded-r-lg">
+                            <h4 class="mb-4 text-gray-700 font-semibold">Step 1.5: Set Questions & Marks Per Subject</h4>
+                            <div id="subject-q-inputs-container" class="space-y-3"></div>
+                        </div>
+
+                        <button type="button" class="btn mt-4 w-full bg-green-700 text-white py-2.5 px-6 rounded-lg font-semibold shadow-md hover:bg-green-600 disabled:bg-gray-400 disabled:opacity-70 disabled:cursor-not-allowed" id="generate-form-btn">Generate Test Form</button>
+                        <div id="config-status" class="status mt-4 text-center min-h-[24px] font-medium data-[status='success']:text-green-700 data-[status='error']:text-red-700"></div>
+                    </div>
+
+                    <!-- Step 2: Fill Form -->
+                    <form id="ui-form" class="hidden" onsubmit="return false;">
+                        <h2 class="text-xl font-semibold mb-4">Step 2: Fill Questions</h2>
+                        <div class="form-group mb-5"><label for="description" class="block mb-1.5 font-medium text-sm">Test Description</label><textarea id="description" class="form-textarea w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" rows="3"></textarea></div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="form-group"><label for="duration" class="block mb-1.5 font-medium text-sm">Duration (mins)</label><input type="number" id="duration" class="form-input w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" required></div>
+                            <div class="form-group"><label for="total-marks" class="block mb-1.5 font-medium text-sm">Total Marks (auto-calculated)</label><input type="number" id="total-marks" class="form-input w-full p-2 border border-gray-200 rounded-md text-base shadow-sm bg-gray-100" disabled></div>
+                        </div>
+
+                        <div id="questions-container" class="mt-8 border-t border-gray-200 pt-6">
+                            <div id="questions-list" class="space-y-6"></div>
+                            <button type="button" class="btn btn-secondary mt-4 w-auto bg-gray-600 text-white py-2 px-5 rounded-lg font-semibold shadow-md hover:bg-gray-500" id="add-question-btn">+ Add One More Question</button>
+                        </div>
+
+                        <div class="text-right mt-8 flex justify-end gap-3 flex-wrap">
+                            <button type="button" class="btn btn-secondary w-auto flex-grow sm:flex-grow-0 bg-gray-600 text-white py-2.5 px-6 rounded-lg font-semibold shadow-md hover:bg-gray-500" id="back-to-config-btn">Back to Config</button>
+                            <button type="button" class="btn w-auto flex-grow sm:flex-grow-0 bg-green-700 text-white py-2.5 px-6 rounded-lg font-semibold shadow-md hover:bg-green-600 disabled:bg-gray-400 disabled:opacity-70 disabled:cursor-not-allowed" id="upload-test-btn" disabled>Upload Test to Database</button>
+                        </div>
+                    </form>
+                     <div id="ui-status" class="status mt-6 text-center min-h-[24px] font-medium data-[status='success']:text-green-700 data-[status='error']:text-red-700"></div>
+                </div>
+
+                <!-- Tab 2: Upload from Excel -->
+                <div id="excel-content" class="tab-content hidden p-6 md:p-8">
+                    <p class="text-sm text-gray-600 mb-6">Fill in the test metadata first. Then, upload an Excel file (.xlsx) with your questions. The file must match the template format.</p>
+                    <div class="my-6">
+                        <button type="button" class="btn btn-secondary w-auto bg-gray-600 text-white py-2 px-5 rounded-lg font-semibold shadow-md hover:bg-gray-500" id="download-template-btn">Download Excel Template</button>
+                    </div>
+
+                    <!-- Metadata -->
+                    <div id="excel-step-1" class="mb-8">
+                        <h2 class="text-lg font-semibold mb-4">Test Metadata</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                             <div class="form-group"><label for="excel-config-title" class="block mb-1.5 font-medium text-sm">Test Title</label><input type="text" id="excel-config-title" class="form-input w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" required></div>
+                            <div class="form-group">
+                                <label for="excel-config-type" class="block mb-1.5 font-medium text-sm">Exam Type</label>
+                                <select id="excel-config-type" class="form-select w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" required>
+                                    <option value="JEE">JEE</option>
+                                    <option value="NEET">NEET</option>
+                                    <option value="KCET">KCET</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="excel-config-syllabus-type" class="block mb-1.5 font-medium text-sm">Syllabus Type</label>
+                                <select id="excel-config-syllabus-type" class="form-select w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" required>
+                                    <option value="Chapterwise">Chapterwise</option>
+                                    <option value="Full Syllabus">Full Syllabus</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label for="excel-config-negative-marks" class="block mb-1.5 font-medium text-sm">Negative Marks</label><input type="number" id="excel-config-negative-marks" class="form-input w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" value="1" step="0.25" required></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="excel-config-subjects" class="block mb-1.5 font-medium text-sm">Subjects (Select all that are in your file)</label>
+                            <select id="excel-config-subjects" class="form-select" multiple="multiple" style="width: 100%;" required>
+                                <option value="Physics">Physics</option>
+                                <option value="Chemistry">Chemistry</option>
+                                <option value="Mathematics">Mathematics</option>
+                                <option value="Biology">Biology</option>
+                                <option value="Botany">Botany</option>
+                                <option value="Zoology">Zoology</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- File Upload -->
+                    <div class="form-group mt-8">
+                        <label for="excel-file-input" class="block mb-1.5 font-medium text-sm">Upload Excel File (.xlsx)</label>
+                        <input type="file" id="excel-file-input" class="form-input w-full p-2 border border-gray-200 rounded-md text-base shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                    </div>
+                    <button id="process-excel-btn" class="btn mt-4 w-full bg-green-700 text-white py-2.5 px-6 rounded-lg font-semibold shadow-md hover:bg-green-600 disabled:bg-gray-400 disabled:opacity-70 disabled:cursor-not-allowed">Process Excel & Preview Form</button>
+                    <div id="excel-status" class="status mt-6 text-center min-h-[24px] font-medium data-[status='success']:text-green-700 data-[status='error']:text-red-700"></div>
+                </div>
+
+                <!-- Tab 3: Upload from JSON -->
+                 <div id="json-content" class="tab-content hidden p-6 md:p-8">
+                    <p class="text-sm text-gray-600 mb-4">Paste your valid JSON content into the text area below. The `id` must be unique.</p>
+                    <textarea id="json-text-input" class="form-textarea w-full p-3 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" placeholder="Paste your test JSON here..." style="height: 300px; font-family: 'Courier New', Courier, monospace;"></textarea>
+                    <button id="upload-json-btn" class="btn mt-4 w-full bg-green-700 text-white py-2.5 px-6 rounded-lg font-semibold shadow-md hover:bg-green-600 disabled:bg-gray-400 disabled:opacity-70 disabled:cursor-not-allowed">Upload JSON</button>
+                    <div id="json-status" class="status mt-6 text-center min-h-[24px] font-medium data-[status='success']:text-green-700 data-[status='error']:text-red-700"></div>
+                    <div class="format-info mt-8 bg-green-50 border border-green-200 p-4 rounded-lg text-sm text-left">
+                        <p class="font-semibold text-green-800 mb-2"><strong>Required JSON Format (Exact structure match, including `Chapterwise` and image URLs):</strong></p>
+                        <pre class="bg-gray-100 p-4 rounded-md border border-gray-300 max-h-96 overflow-y-auto text-xs">
+{
+  "id": "unique-test-id",
+  "title": "Your Test Title",
+  "type": "JEE",
+  "Chapterwise": false,
+  "description": "...",
+  "duration": 180,
+  "questions": 75,
+  "subjects": ["Physics", "Chemistry"],
+  "marks": 300,
+  "negativeMarks": 1,
+  "available": true,
+  "questions_data": [
+    {
+      "id": 1,
+      "subject": "Physics",
+      "topic": "Mechanics",
+      "questionType": "MCQ",
+      "questionText": "...",
+      "questionImageUrl": "https://.../img.png", <!-- Optional -->
+      "options": ["A", "B", "C", "D"],
+      "correctAnswer": 2, <!-- Index (0-3) for MCQ, number for NVQ -->
+      "marks": 4,
+      "negativeMarks": 1, <!-- Per question (usually same as test level) -->
+      "solution": "...",
+      "solutionImageUrl": "https://.../sol.png" <!-- Optional -->
+    },
+    {
+      "id": 2,
+      "subject": "Chemistry",
+      "topic": "Stoichiometry",
+      "questionType": "NVQ",
+      "questionText": "...",
+      "options": ["nil"], <!-- Must be ["nil"] for NVQ -->
+      "correctAnswer": 10.5,
+      "marks": 4,
+      "negativeMarks": 1,
+      "solution": "..."
+    }
+    <!-- ... more questions -->
+  ]
+}
+                        </pre>
+                    </div>
+                </div>
+            </div> <!-- End Card -->
+        </div> <!-- End Container -->
+    </div> <!-- End Main Content -->
+
+    <!-- Authentication Status -->
+    <div id="auth-status" class="pt-16">
+        <p>Loading... Checking authentication status.</p>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[100] flex items-center justify-center">
+        <div class="relative mx-auto p-6 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="text-center">
+                <!-- Checkmark Icon -->
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                    <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Upload Successful!</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p class="text-sm text-gray-600" id="modal-message">Test uploaded.</p>
+                </div>
+                <div class="items-center px-4 py-3">
+                    <button id="close-modal-btn" class="px-4 py-2 bg-green-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-300">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Question Item Template (Hidden, for cloning) -->
+    <template id="question-item-template">
+         <div class="question-item bg-white p-6 rounded-lg border border-gray-200 shadow-sm mb-6">
+            <div class="question-header flex justify-between items-center mb-4 pb-2 border-b border-gray-200">
+                <h4 class="text-base font-semibold text-gray-800">Question X</h4>
+                <button type="button" class="btn delete-btn bg-red-600 text-white py-1 px-3 rounded text-xs font-medium hover:bg-red-700 shadow-none">Delete Question</button>
+            </div>
+
+            <div class="form-group question-type-select-group bg-gray-50 p-3 rounded-md border border-gray-200 mb-4">
+                <label class="block mb-1.5 font-medium text-sm">Question Type</label>
+                <select class="form-select question-type-select w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20">
+                    <option value="MCQ">MCQ (Multiple Choice Question)</option>
+                    <option value="NVQ">NVQ (Numerical Value Question)</option>
+                </select>
+            </div>
+
+            <div class="form-group mb-4"><label class="block mb-1.5 font-medium text-sm">Question Text</label><textarea class="form-textarea question-text w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" rows="3" required></textarea></div>
+
+            <!-- QUESTION IMAGE UPLOAD SECTION -->
+            <div class="image-upload-group border border-blue-200 bg-blue-50 p-4 rounded-md mt-4">
+                <label class="block mb-2 font-medium text-sm text-blue-800">Question Image (Optional)</label>
+                <div class="image-upload-flex flex gap-2 items-center flex-wrap">
+                    <input type="file" class="form-input question-image-file flex-grow p-0 border-none file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200" accept="image/jpeg, image/png, image/webp">
+                    <button type="button" class="btn image-upload-btn question-image-btn w-auto shrink-0 bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-semibold shadow-sm hover:bg-blue-500">Upload Qs. Image</button>
+                </div>
+                <input type="hidden" class="question-image-url" value="">
+                <div class="image-status question-image-status text-xs mt-2 text-gray-600 min-h-[1.5rem]">Ready to upload.</div>
+                <div class="image-url-display hidden mt-2 p-2 bg-blue-100 text-blue-700 text-xs rounded break-all data-[url]:block">No question image URL.</div>
+            </div>
+
+            <!-- MCQ Fields - Visible by default -->
+            <div class="mcq-fields mt-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Option A</label><input type="text" class="form-input option-a w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" value="A"></div>
+                    <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Option B</label><input type="text" class="form-input option-b w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" value="B"></div>
+                    <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Option C</label><input type="text" class="form-input option-c w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" value="C"></div>
+                    <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Option D</label><input type="text" class="form-input option-d w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" value="D"></div>
+                </div>
+                <div class="form-group">
+                    <label class="block mb-1.5 font-medium text-sm">Correct Answer (MCQ)</label>
+                    <select class="form-select correct-answer-mcq w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20">
+                        <option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- NVQ Fields - Hidden by default -->
+            <div class="nvq-fields hidden mt-4">
+                <div class="form-group">
+                    <label class="block mb-1.5 font-medium text-sm">Correct Numerical Answer (NVQ)</label>
+                    <input type="number" step="any" class="form-input correct-answer-nvq w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" placeholder="e.g., 10.5 or 0.02">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Subject</label><input type="text" class="form-input question-subject w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" required></div>
+                <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Topic</label><input type="text" class="form-input question-topic w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" required></div>
+                <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Marks</label><input type="number" class="form-input question-marks w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" value="4" step="0.25" required></div>
+            </div>
+            <div class="form-group mt-4"><label class="block mb-1.5 font-medium text-sm">Solution Text</label><textarea class="form-textarea solution w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" rows="2" required></textarea></div>
+
+            <!-- SOLUTION IMAGE UPLOAD SECTION -->
+            <div class="image-upload-group solution border border-yellow-300 bg-yellow-50 p-4 rounded-md mt-4">
+                 <label class="block mb-2 font-medium text-sm text-yellow-800">Solution Image (Optional)</label>
+                <div class="image-upload-flex flex gap-2 items-center flex-wrap">
+                    <input type="file" class="form-input solution-image-file flex-grow p-0 border-none file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200" accept="image/jpeg, image/png, image/webp">
+                    <button type="button" class="btn image-upload-btn solution-image-btn w-auto shrink-0 bg-yellow-500 text-white py-2 px-4 rounded-md text-sm font-semibold shadow-sm hover:bg-yellow-600" style="background-color: #f59e0b;">Upload Sol. Image</button>
+                </div>
+                <input type="hidden" class="solution-image-url" value="">
+                <div class="image-status solution-image-status text-xs mt-2 text-gray-600 min-h-[1.5rem]">Ready to upload.</div>
+                <div class="image-url-display hidden mt-2 p-2 bg-yellow-100 text-yellow-700 text-xs rounded break-all data-[url]:block">No solution image URL.</div>
+            </div>
+        </div>
+    </template>
+
+
+    <script type="module">
+        // Import Firebase & Supabase (same as before)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, setLogLevel } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+        // Config (same as before)
+        const firebaseConfig = { /* ... your config ... */
+             apiKey: "AIzaSyCQ34ZAWWCMuaQ01fvX0sI-YdklK0mJ5aw",
+             authDomain: "testseries-38752.firebaseapp.com",
+             projectId: "testseries-38752",
+             storageBucket: "testseries-38752.firebasestorage.app",
+             messagingSenderId: "519384534407",
+             appId: "1:519384534407:web:201265a9d703708334d722"
+        };
+        const SUPABASE_URL = 'https://evetjiyruynvqhjfmuny.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIZDI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2ZXRqaXlydXludnFoamZtdW55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1ODIyNjUsImV4cCI6MjA3NTE1ODI2NX0.5wjRCHPesj_4OywiFyFyh3uuYtD8zOGBY9aARUAOmxU';
+        const BUCKET_NAME = 'Photos';
+
+        // Initialize Clients (same as before)
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        setLogLevel('debug');
+
+        // TestUploader Class
+        class TestUploader {
+             constructor() {
+                this.currentUserId = null;
+                this.currentUserEmail = null; // Store email
+                this.generatedJson = null;
+                this.questionCounter = 0;
+                // --- FIX: Ensure template is properly selected ---
+                const template = document.getElementById('question-item-template');
+                if (!template || !template.content || !template.content.firstElementChild) {
+                    console.error("CRITICAL: Question item template not found or is invalid!");
+                    // Optionally, disable parts of the UI or show an error message
+                    this.questionTemplate = null; // Indicate template is missing
+                } else {
+                    this.questionTemplate = template.content.firstElementChild;
+                }
+
+
+                this.elements = {
+                    authStatus: document.getElementById('auth-status'),
+                    mainContent: document.getElementById('main-content'),
+                    // Nav elements
+                    userEmailDesktop: document.getElementById('user-email-desktop'),
+                    userEmailMobile: document.getElementById('user-email-mobile'),
+                    logoutBtnDesktop: document.getElementById('logout-btn-desktop'),
+                    logoutBtnMobile: document.getElementById('logout-btn-mobile'),
+                    mobileMenuButton: document.getElementById('mobile-menu-button'),
+                    mobileMenu: document.getElementById('mobile-menu'),
+
+                    tabs: document.querySelectorAll('.tab-link'),
+                    tabContents: document.querySelectorAll('.tab-content'),
+
+                    // Form Tab
+                    formStep1: document.getElementById('form-step-1'),
+                    uiForm: document.getElementById('ui-form'),
+                    configTitle: document.getElementById('config-title'),
+                    configType: document.getElementById('config-type'),
+                    configSyllabusType: document.getElementById('config-syllabus-type'),
+                    configNegativeMarks: document.getElementById('config-negative-marks'),
+                    configSubjects: $('#config-subjects'), // jQuery object for Select2
+                    subjectQuestionCounts: document.getElementById('subject-question-counts'),
+                    subjectQInputsContainer: document.getElementById('subject-q-inputs-container'),
+                    generateFormBtn: document.getElementById('generate-form-btn'),
+                    configStatus: document.getElementById('config-status'),
+
+                    description: document.getElementById('description'),
+                    duration: document.getElementById('duration'),
+                    totalMarks: document.getElementById('total-marks'),
+                    questionsList: document.getElementById('questions-list'),
+                    addQuestionBtn: document.getElementById('add-question-btn'),
+                    backToConfigBtn: document.getElementById('back-to-config-btn'),
+                    uploadTestBtn: document.getElementById('upload-test-btn'),
+                    uiStatus: document.getElementById('ui-status'),
+
+                    // Excel Tab
+                    excelConfigTitle: document.getElementById('excel-config-title'),
+                    excelConfigType: document.getElementById('excel-config-type'),
+                    excelConfigSyllabusType: document.getElementById('excel-config-syllabus-type'),
+                    excelConfigNegativeMarks: document.getElementById('excel-config-negative-marks'),
+                    excelConfigSubjects: $('#excel-config-subjects'),
+                    excelFileInput: document.getElementById('excel-file-input'),
+                    processExcelBtn: document.getElementById('process-excel-btn'),
+                    downloadTemplateBtn: document.getElementById('download-template-btn'),
+                    excelStatus: document.getElementById('excel-status'),
+
+                    // JSON Tab
+                    jsonTextInput: document.getElementById('json-text-input'),
+                    uploadJsonBtn: document.getElementById('upload-json-btn'),
+                    jsonStatus: document.getElementById('json-status'),
+
+                    // Modal Elements
+                    successModal: document.getElementById('success-modal'),
+                    modalMessage: document.getElementById('modal-message'),
+                    closeModalBtn: document.getElementById('close-modal-btn'),
+                };
+
+                this.initializeSelect2();
+                this.setupAuthListener();
+            }
+
+             // --- Get College ID from Email ---
+             getCollegeIdFromEmail(email) {
+                if (!email || typeof email !== 'string') {
+                    return 'unknown'; // Fallback if email is missing or invalid
+                }
+                // Extract first 4 letters, convert to lowercase
+                const collegeId = email.substring(0, 4).toLowerCase();
+                 // Basic validation: ensure it's 4 letters (optional, depends on strictness)
+                 // if (!/^[a-z]{4}$/.test(collegeId)) {
+                 //     console.warn(`Could not derive a valid 4-letter college ID from email: ${email}`);
+                 //     return 'xxxx'; // Another fallback
+                 // }
+                 return collegeId || 'xxxx'; // Fallback if substring result is empty
+             }
+
+
+            // Methods (initializeSelect2, updateSubjectQuestionInputs, setupAuthListener, setupEventListeners, switchTab, showFormStep, handleGenerateForm, addQuestionField, handleQuestionListChange, updateTotalMarks, handleQuestionListClick, deleteQuestionField, reIndexQuestions, triggerUpload, handleUploadGeneratedTest, buildTestDataFromForm, downloadExcelTemplate, handleProcessExcel, parseExcelData, populateFormWithData, handleJsonUpload, uploadTestData, setLoading, setError, setSuccess, setIdle)
+
+              initializeSelect2() {
+                this.elements.configSubjects.select2({ placeholder: "Select subjects..." });
+                this.elements.excelConfigSubjects.select2({ placeholder: "Select subjects..." });
+                this.elements.configSubjects.on('change', () => this.updateSubjectQuestionInputs());
+            }
+
+            updateSubjectQuestionInputs() {
+                const selectedSubjects = this.elements.configSubjects.val() || [];
+                this.elements.subjectQInputsContainer.innerHTML = '';
+
+                if (selectedSubjects.length > 0) {
+                    selectedSubjects.forEach(subject => {
+                        const subjectId = subject.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                        const inputHTML = `
+                            <div class="grid grid-cols-2 gap-3 items-end border-b border-gray-100 pb-2 mb-2">
+                                <div class="form-group mb-0">
+                                    <label for="config-q-${subjectId}" class="block mb-1 text-sm font-medium text-gray-700">Questions for ${subject}</label>
+                                    <input type="number" id="config-q-${subjectId}" class="form-input subject-q-input w-full p-2 border border-gray-200 rounded-md text-sm shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20"
+                                           data-subject="${subject}" value="25" min="1" required>
+                                </div>
+                                <div class="form-group mb-0">
+                                    <label for="config-m-${subjectId}" class="block mb-1 text-sm font-medium text-gray-700">Marks per Qs.</label>
+                                    <input type="number" id="config-m-${subjectId}" class="form-input subject-m-input w-full p-2 border border-gray-200 rounded-md text-sm shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20"
+                                           data-subject="${subject}" value="4" min="0" step="0.25" required>
+                                </div>
+                            </div>
+                        `;
+                        this.elements.subjectQInputsContainer.insertAdjacentHTML('beforeend', inputHTML);
+                    });
+                    this.elements.subjectQuestionCounts.classList.remove('hidden');
+                } else {
+                    this.elements.subjectQuestionCounts.classList.add('hidden');
+                }
+            }
+
+            setupAuthListener() {
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        this.currentUserId = user.uid;
+                        this.currentUserEmail = user.email; // Store email
+                        // Update user email in both desktop and mobile nav
+                        this.elements.userEmailDesktop.textContent = user.email;
+                        this.elements.userEmailMobile.textContent = user.email;
+                        this.elements.authStatus.classList.add('hidden');
+                        this.elements.mainContent.classList.remove('hidden');
+                        this.setupEventListeners(); // Setup listeners only after auth
+                    } else {
+                        this.currentUserId = null;
+                        this.currentUserEmail = null; // Clear email
+                        console.log("No user signed in. Redirecting to login.html");
+                        window.location.href = 'login.html'; // Or your actual login page
+                    }
+                });
+            }
+
+            setupEventListeners() {
+                // Logout buttons
+                this.elements.logoutBtnDesktop.addEventListener('click', () => signOut(auth));
+                this.elements.logoutBtnMobile.addEventListener('click', () => signOut(auth));
+
+                // Mobile menu toggle
+                this.elements.mobileMenuButton.addEventListener('click', () => {
+                    const expanded = this.elements.mobileMenuButton.getAttribute('aria-expanded') === 'true' || false;
+                    this.elements.mobileMenuButton.setAttribute('aria-expanded', !expanded);
+                    this.elements.mobileMenu.classList.toggle('hidden');
+                    // Toggle icons
+                    this.elements.mobileMenuButton.querySelector('svg:first-child').classList.toggle('hidden'); // Hamburger
+                    this.elements.mobileMenuButton.querySelector('svg:last-child').classList.toggle('hidden'); // Close
+                });
+
+
+                // Tabs
+                this.elements.tabs.forEach(tab => {
+                    tab.addEventListener('click', (e) => this.switchTab(e.currentTarget.dataset.tab));
+                });
+
+                // Form Tab
+                this.elements.generateFormBtn.addEventListener('click', () => this.handleGenerateForm());
+                this.elements.addQuestionBtn.addEventListener('click', () => this.addQuestionField()); // Default add
+                this.elements.questionsList.addEventListener('click', e => this.handleQuestionListClick(e));
+                this.elements.questionsList.addEventListener('change', e => this.handleQuestionListChange(e)); // For selects, marks etc.
+                this.elements.backToConfigBtn.addEventListener('click', () => this.showFormStep(1));
+                this.elements.uploadTestBtn.addEventListener('click', () => this.handleUploadGeneratedTest());
+
+
+                // Excel Tab
+                this.elements.downloadTemplateBtn.addEventListener('click', () => this.downloadExcelTemplate());
+                this.elements.processExcelBtn.addEventListener('click', () => this.handleProcessExcel());
+
+                // JSON Tab
+                this.elements.uploadJsonBtn.addEventListener('click', () => this.handleJsonUpload());
+
+                // Modal Close Button
+                this.elements.closeModalBtn.addEventListener('click', () => this.closeSuccessPopup());
+            }
+
+            switchTab(tabName) {
+                this.elements.tabs.forEach(t => {
+                    t.classList.remove('active', 'text-green-700', 'border-green-700');
+                    t.classList.add('text-gray-500', 'border-transparent', 'hover:text-green-600');
+                    t.removeAttribute('data-active');
+                });
+                this.elements.tabContents.forEach(c => c.classList.add('hidden'));
+
+                const activeTabLink = document.querySelector(`.tab-link[data-tab="${tabName}"]`);
+                if (activeTabLink) {
+                    activeTabLink.classList.add('active', 'text-green-700', 'border-green-700');
+                    activeTabLink.classList.remove('text-gray-500', 'border-transparent', 'hover:text-green-600');
+                    activeTabLink.setAttribute('data-active', '');
+                }
+                const activeTabContent = document.getElementById(`${tabName}-content`);
+                 if(activeTabContent) {
+                    activeTabContent.classList.remove('hidden');
+                 }
+            }
+
+
+            showFormStep(step) {
+                if (step === 1) {
+                    this.elements.formStep1.classList.remove('hidden');
+                    this.elements.uiForm.classList.add('hidden');
+                     this.elements.uploadTestBtn.disabled = true; // Disable upload btn when going back to config
+                } else {
+                    this.elements.formStep1.classList.add('hidden');
+                    this.elements.uiForm.classList.remove('hidden');
+                     // Enable upload btn when showing step 2 (should already be enabled by generate/process, but safe to ensure)
+                    this.elements.uploadTestBtn.disabled = this.elements.questionsList.children.length === 0;
+
+                }
+            }
+
+            handleGenerateForm() {
+                 // --- FIX: Check if template exists before proceeding ---
+                 if (!this.questionTemplate) {
+                     this.setError(this.elements.configStatus, "Error: Question template failed to load. Cannot generate form.");
+                     return;
+                 }
+
+                this.setLoading(this.elements.generateFormBtn, this.elements.configStatus, 'Generating...');
+                this.elements.questionsList.innerHTML = '';
+                this.questionCounter = 0;
+                let totalQuestions = 0;
+
+                try {
+                    const title = this.elements.configTitle.value;
+                    const subjects = this.elements.configSubjects.val();
+                    if (!title) throw new Error("Test Title is required.");
+                    if (!subjects || subjects.length === 0) throw new Error("Please select at least one subject.");
+
+                    const questionPlan = [];
+                    const qInputs = this.elements.subjectQInputsContainer.querySelectorAll('.subject-q-input');
+                    if (qInputs.length === 0) throw new Error("No subjects selected or counts provided.");
+
+                    qInputs.forEach(input => {
+                        const count = parseInt(input.value, 10);
+                        const subject = input.dataset.subject;
+                        const subjectId = subject.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                        const marksInput = this.elements.subjectQInputsContainer.querySelector(`#config-m-${subjectId}`);
+                        // --- FIX: Add null check for marksInput ---
+                        if (!marksInput) throw new Error(`Could not find marks input for subject: ${subject}`);
+                        const marks = parseFloat(marksInput.value);
+
+                        if (isNaN(count) || count <= 0) throw new Error(`Please enter a valid number of questions for ${subject}.`);
+                        if (isNaN(marks) || marks < 0) throw new Error(`Please enter valid marks for ${subject}.`);
+
+                        questionPlan.push({ subject, count, marks });
+                        totalQuestions += count;
+                    });
+
+                    this.elements.description.value = '';
+                    this.elements.duration.value = totalQuestions * 2;
+                    this.elements.totalMarks.value = 0;
+
+                    questionPlan.forEach(plan => {
+                        for (let i = 0; i < plan.count; i++) {
+                            this.addQuestionField(plan.subject, plan.marks);
+                        }
+                    });
+
+                    this.updateTotalMarks();
+                    this.showFormStep(2);
+                    // this.elements.uploadTestBtn.disabled = false; // Already handled in showFormStep(2)
+                    this.setSuccess(this.elements.configStatus, `Generated ${totalQuestions} questions.`);
+
+                } catch (error) {
+                    console.error("Error generating form:", error);
+                    this.setError(this.elements.configStatus, error.message);
+                } finally {
+                    this.setIdle(this.elements.generateFormBtn, 'Generate Test Form');
+                }
+            }
+
+             addQuestionField(subject = '', marks = 4) {
+                 // --- FIX: Check template again before cloning ---
+                 if (!this.questionTemplate) {
+                     console.error("Cannot add question field: template is missing.");
+                     // Optionally show an error to the user
+                     this.setError(this.elements.uiStatus, "Error adding question field: template missing.");
+                     return; // Stop execution of this function
+                 }
+
+                const index = this.questionCounter++;
+                const newQuestionNode = this.questionTemplate.cloneNode(true); // Clone the template
+
+                // Update IDs and dynamic content
+                newQuestionNode.id = `question-${index}`;
+                // --- Add null check for header just in case ---
+                const header = newQuestionNode.querySelector('.question-header h4');
+                if (header) {
+                    header.textContent = `Question ${index + 1}`;
+                }
+                const subjectInput = newQuestionNode.querySelector('.question-subject');
+                if (subjectInput) {
+                    subjectInput.value = subject;
+                }
+                const marksInput = newQuestionNode.querySelector('.question-marks');
+                if (marksInput) {
+                     marksInput.value = marks;
+                }
+
+                 // Handle potential display issues for image URLs - WITH NULL CHECKS
+                 const qImageUrlInput = newQuestionNode.querySelector('.question-image-url');
+                 const qImageUrlDisplay = newQuestionNode.querySelector('.question-image-display');
+                 // --- Add null check for display element ---
+                 if (qImageUrlDisplay) {
+                     if (qImageUrlInput && qImageUrlInput.value) { // Also check input exists
+                         qImageUrlDisplay.textContent = `URL: ${qImageUrlInput.value}`;
+                         qImageUrlDisplay.classList.remove('hidden');
+                         qImageUrlDisplay.dataset.url = qImageUrlInput.value;
+                     } else {
+                          qImageUrlDisplay.classList.add('hidden');
+                          qImageUrlDisplay.textContent = 'No question image URL.';
+                          delete qImageUrlDisplay.dataset.url;
+                     }
+                 } else {
+                     console.error(`Could not find '.question-image-display' in question item template clone (index ${index})`);
+                 }
+
+
+                 const solImageUrlInput = newQuestionNode.querySelector('.solution-image-url');
+                 const solImageUrlDisplay = newQuestionNode.querySelector('.solution-image-display');
+                  // --- Add null check for display element ---
+                 if (solImageUrlDisplay) {
+                     if (solImageUrlInput && solImageUrlInput.value) { // Also check input exists
+                         solImageUrlDisplay.textContent = `URL: ${solImageUrlInput.value}`;
+                         solImageUrlDisplay.classList.remove('hidden');
+                         solImageUrlDisplay.dataset.url = solImageUrlInput.value;
+
+                     } else {
+                          solImageUrlDisplay.classList.add('hidden');
+                          solImageUrlDisplay.textContent = 'No solution image URL.';
+                          delete solImageUrlDisplay.dataset.url;
+                     }
+                 } else {
+                    console.error(`Could not find '.solution-image-display' in question item template clone (index ${index})`);
+                 }
+
+
+                this.elements.questionsList.appendChild(newQuestionNode);
+                this.elements.uploadTestBtn.disabled = false;
+                this.updateTotalMarks();
+            }
+
+
+            handleQuestionListChange(e) {
+                const target = e.target;
+                const questionItem = target.closest('.question-item');
+                if (!questionItem) return; // If the change didn't happen within a question item, exit.
+
+                // Check if target is the select dropdown
+                if (target.classList.contains('question-type-select')) {
+                    const type = target.value;
+                    const mcqFields = questionItem.querySelector('.mcq-fields');
+                    const nvqFields = questionItem.querySelector('.nvq-fields');
+
+                    // --- FIX: Add null checks ---
+                    if (mcqFields) {
+                        mcqFields.classList.toggle('hidden', type !== 'MCQ');
+                    } else {
+                        console.error("Could not find '.mcq-fields' within question item:", questionItem);
+                    }
+                    if (nvqFields) {
+                        nvqFields.classList.toggle('hidden', type !== 'NVQ');
+                    } else {
+                         console.error("Could not find '.nvq-fields' within question item:", questionItem);
+                    }
+                // Check if target is the marks input
+                } else if (target.classList.contains('question-marks')) {
+                    this.updateTotalMarks();
+                }
+                 // Add more else if blocks here if other inputs need handling on change
+            }
+
+
+            updateTotalMarks() {
+                let total = 0;
+                this.elements.questionsList.querySelectorAll('.question-marks').forEach(input => {
+                    total += parseFloat(input.value) || 0;
+                });
+                this.elements.totalMarks.value = total;
+            }
+
+            handleQuestionListClick(e) {
+                const button = e.target.closest('button');
+                if (!button) return;
+                const questionItem = button.closest('.question-item');
+                 if (!questionItem) return; // Should not happen if button is inside item
+
+
+                if (button.classList.contains('delete-btn')) {
+                    this.deleteQuestionField(questionItem); // Pass the item itself
+                } else if (button.classList.contains('question-image-btn')) {
+                     const fileInput = questionItem.querySelector('.question-image-file');
+                    const statusDiv = questionItem.querySelector('.question-image-status');
+                    const urlInput = questionItem.querySelector('.question-image-url');
+                     const urlDisplay = questionItem.querySelector('.question-image-display');
+                     const testTitle = this.elements.configTitle.value;
+                     // Get index based on current position in the list
+                     const questionIndex = Array.from(this.elements.questionsList.children).indexOf(questionItem);
+                    this.triggerUpload(fileInput, testTitle, questionIndex, 'question', statusDiv, urlInput, button, urlDisplay);
+                 } else if (button.classList.contains('solution-image-btn')) {
+                    const fileInput = questionItem.querySelector('.solution-image-file');
+                    const statusDiv = questionItem.querySelector('.solution-image-status');
+                    const urlInput = questionItem.querySelector('.solution-image-url');
+                     const urlDisplay = questionItem.querySelector('.solution-image-display');
+                    const testTitle = this.elements.configTitle.value;
+                    // Get index based on current position in the list
+                    const questionIndex = Array.from(this.elements.questionsList.children).indexOf(questionItem);
+                    this.triggerUpload(fileInput, testTitle, questionIndex, 'solution', statusDiv, urlInput, button, urlDisplay);
+                 }
+            }
+
+
+             deleteQuestionField(questionItem) { // Accept the item element
+                if (questionItem) {
+                    questionItem.remove();
+                    this.reIndexQuestions(); // Renumber remaining questions
+                    this.updateTotalMarks();
+                     // Disable upload button if no questions left
+                    this.elements.uploadTestBtn.disabled = this.elements.questionsList.children.length === 0;
+                }
+            }
+
+            reIndexQuestions() {
+                const questionItems = this.elements.questionsList.querySelectorAll('.question-item');
+                questionItems.forEach((item, index) => {
+                    const header = item.querySelector('.question-header h4');
+                    if (header) {
+                        header.textContent = `Question ${index + 1}`;
+                    }
+                    item.id = `question-${index}`; // Update ID if needed for targeting
+                });
+                this.questionCounter = questionItems.length; // Resync counter
+            }
+
+
+             async triggerUpload(fileInput, testTitle, index, fileType, statusDiv, urlInput, uploadBtn, urlDisplay) {
+                // --- FIX: Add null checks for statusDiv, urlInput, uploadBtn, urlDisplay ---
+                if (!statusDiv || !urlInput || !uploadBtn || !urlDisplay) {
+                    console.error("Error in triggerUpload: One or more UI elements are missing for index", index, fileType);
+                    return; // Stop if elements are missing
+                }
+
+                const buttonText = uploadBtn.textContent;
+                if (!fileInput || fileInput.files.length === 0) { // Add null check for fileInput
+                    this.setError(statusDiv, 'Please select a file first.');
+                    return;
+                }
+                const file = fileInput.files[0];
+                 const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+                 if (!validTypes.includes(file.type)) {
+                     this.setError(statusDiv, 'Invalid file type. Please select JPG, PNG, or WEBP.');
+                     fileInput.value = ''; // Clear the input
+                     return;
+                 }
+
+                if (!this.currentUserEmail) { // Use email check for college id derivation
+                    this.setError(statusDiv, "User email not found. Please log in again.");
+                    return;
+                }
+                if (!testTitle) {
+                    this.setError(statusDiv, "Please enter a Test Title in Step 1 first.");
+                    return;
+                }
+                // --- Use College ID in path ---
+                const collegeId = this.getCollegeIdFromEmail(this.currentUserEmail);
+                if (collegeId === 'unknown' || collegeId === 'xxxx') {
+                     this.setError(statusDiv, "Could not determine college ID from email.");
+                     return;
+                }
+
+                const testSlug = testTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                // Path structure: {college_id}/{test_slug}/Q{index+1}_{type}_{timestamp}.ext
+                const path = `${collegeId}/${testSlug}/Q${index + 1}_${fileType}_${Date.now()}.${file.name.split('.').pop()}`;
+
+
+                this.setLoading(uploadBtn, statusDiv, 'Uploading...');
+                urlDisplay.textContent = 'Uploading...'; // Give feedback in display too
+                 urlDisplay.classList.remove('hidden'); // Show it
+                 delete urlDisplay.dataset.url; // Remove old URL data attribute
+
+
+                try {
+                    const { data, error } = await supabase.storage
+                        .from(BUCKET_NAME)
+                        .upload(path, file, { cacheControl: '3600', upsert: false }); // upsert: false prevents overwriting
+
+                    if (error) throw error;
+
+                    const { data: publicUrlData } = supabase.storage
+                        .from(BUCKET_NAME)
+                        .getPublicUrl(data.path);
+
+                    if (!publicUrlData || !publicUrlData.publicUrl) {
+                        throw new Error("Could not retrieve public URL after upload.");
+                    }
+
+                    urlInput.value = publicUrlData.publicUrl;
+                    urlDisplay.textContent = `URL: ${publicUrlData.publicUrl}`; // Update display text
+                    urlDisplay.dataset.url = publicUrlData.publicUrl; // Set data attribute for styling
+                    this.setSuccess(statusDiv, `${fileType} image uploaded!`);
+
+                } catch (error) {
+                    urlInput.value = '';
+                    urlDisplay.textContent = 'Upload failed.';
+                    this.setError(statusDiv, `Upload Failed: ${error.message}`);
+                    console.error("Image Upload Error:", error);
+                     urlDisplay.classList.add('hidden'); // Hide on failure after showing uploading message
+                     delete urlDisplay.dataset.url;
+                } finally {
+                    this.setIdle(uploadBtn, buttonText);
+                     fileInput.value = ''; // Clear file input after attempt
+                }
+            }
+
+            async handleUploadGeneratedTest() {
+                const statusDiv = this.elements.uiStatus;
+                const uploadBtn = this.elements.uploadTestBtn;
+
+                this.setLoading(uploadBtn, statusDiv, 'Validating...');
+
+                try {
+                    const testData = this.buildTestDataFromForm();
+                    this.generatedJson = testData;
+
+                    this.setLoading(uploadBtn, statusDiv, 'Uploading Test...');
+                    // Pass the specific status div and the test details for the popup
+                    await this.uploadTestData(testData, statusDiv, {title: testData.title, id: testData.id});
+
+
+                } catch (error) {
+                     this.setError(statusDiv, `Upload failed: ${error.message}`);
+                     console.error("Direct Upload Error:", error);
+                } finally {
+                    // Always set idle, even on error
+                    this.setIdle(uploadBtn, 'Upload Test to Database');
+                    // Do not reset the form on error, allow user to fix issues
+                     // Re-disable button only if upload failed AND there are no questions (unlikely scenario here)
+                     uploadBtn.disabled = this.elements.questionsList.children.length === 0;
+
+                }
+            }
+
+
+             buildTestDataFromForm() {
+                const title = this.elements.configTitle.value.trim(); // Trim input
+                if (!title) throw new Error("Test Title is required.");
+                const testId = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                 if (!testId) throw new Error("Generated Test ID is invalid (check title)."); // Add check for empty slug
+
+                const negativeMarksValueRaw = this.elements.configNegativeMarks.value;
+                 if (negativeMarksValueRaw === '' || isNaN(parseFloat(negativeMarksValueRaw))) {
+                     throw new Error("Valid Negative Marks value is required.");
+                 }
+                 const negativeMarksValue = parseFloat(negativeMarksValueRaw);
+
+                const subjectsArray = this.elements.configSubjects.val() || [];
+                 if (subjectsArray.length === 0) throw new Error("At least one Subject must be selected.");
+
+                const isChapterwise = this.elements.configSyllabusType.value === 'Chapterwise';
+
+                const questionsData = Array.from(this.elements.questionsList.querySelectorAll('.question-item')).map((q, i) => {
+                    const questionType = q.querySelector('.question-type-select').value;
+                    const questionText = q.querySelector('.question-text').value.trim();
+                    const solutionText = q.querySelector('.solution').value.trim();
+                    const subject = q.querySelector('.question-subject').value.trim();
+                    const topic = q.querySelector('.question-topic').value.trim();
+                    const marksValue = q.querySelector('.question-marks').value;
+
+
+                     if (!questionText) throw new Error(`Question ${i + 1}: Question Text is required.`);
+                     if (!solutionText) throw new Error(`Question ${i + 1}: Solution Text is required.`);
+                     if (!subject) throw new Error(`Question ${i + 1}: Subject is required.`);
+                     if (!topic) throw new Error(`Question ${i + 1}: Topic is required.`);
+                     if (marksValue === '' || isNaN(parseFloat(marksValue)) || parseFloat(marksValue) < 0) {
+                         throw new Error(`Question ${i + 1}: Valid positive Marks are required.`);
+                     }
+
+
+                    const questionEntry = {
+                        id: i + 1,
+                        subject: subject,
+                        topic: topic,
+                        questionType: questionType,
+                        questionText: questionText,
+                         marks: parseFloat(marksValue),
+                        negativeMarks: negativeMarksValue, // Use test-level negative marks for consistency here
+                        solution: solutionText,
+                    };
+
+                    const qImageUrl = q.querySelector('.question-image-url').value;
+                    const solImageUrl = q.querySelector('.solution-image-url').value;
+                    if (qImageUrl) questionEntry.questionImageUrl = qImageUrl;
+                    if (solImageUrl) questionEntry.solutionImageUrl = solImageUrl;
+
+
+                    if (questionType === 'MCQ') {
+                        const options = [
+                            q.querySelector('.option-a').value.trim(),
+                            q.querySelector('.option-b').value.trim(),
+                            q.querySelector('.option-c').value.trim(),
+                            q.querySelector('.option-d').value.trim(),
+                        ];
+                        if (options.some(o => o === '')) {
+                            throw new Error(`Question ${i + 1} (MCQ): All 4 options are required.`);
+                        }
+                        questionEntry.options = options;
+                        questionEntry.correctAnswer = parseInt(q.querySelector('.correct-answer-mcq').value, 10);
+                    } else if (questionType === 'NVQ') {
+                        const correctAnswerValue = q.querySelector('.correct-answer-nvq').value.trim();
+                        if (correctAnswerValue === '' || isNaN(parseFloat(correctAnswerValue))) {
+                             throw new Error(`Question ${i + 1} (NVQ): A valid Correct Answer Value is required.`);
+                        }
+                        questionEntry.options = ["nil"]; // As per schema
+                        questionEntry.correctAnswer = parseFloat(correctAnswerValue);
+                    }
+
+                    return questionEntry;
+                });
+
+                if (questionsData.length === 0) throw new Error("Please add at least one question.");
+
+                const totalMarks = questionsData.reduce((sum, q) => sum + q.marks, 0);
+                 const durationValue = this.elements.duration.value;
+                 if (durationValue === '' || isNaN(parseInt(durationValue, 10)) || parseInt(durationValue, 10) <= 0) {
+                     throw new Error("Valid Test Duration (in minutes) is required.");
+                 }
+
+                return {
+                    id: testId,
+                    title: title,
+                    type: this.elements.configType.value,
+                    Chapterwise: isChapterwise,
+                    description: this.elements.description.value.trim(),
+                    duration: parseInt(durationValue, 10),
+                    questions: questionsData.length,
+                    subjects: subjectsArray,
+                    difficulty: 'medium', // Default - consider adding this to UI later?
+                    marks: totalMarks,
+                    negativeMarks: negativeMarksValue, // Test level negative marks
+                    available: true, // Default
+                    questions_data: questionsData
+                };
+            }
+
+            // --- Excel Tab ---
+            downloadExcelTemplate() {
+                 const headers = [
+                    "questionType", "questionText", "subject", "topic", "marks",
+                    "optionA", "optionB", "optionC", "optionD",
+                    "correctAnswer", "solution",
+                     "questionImageUrl", "solutionImageUrl" // Added image URL columns
+                ];
+                const exampleMCQ = [
+                    "MCQ", "Example: What is the speed of light in vacuum?", "Physics", "Optics", 4,
+                    "3x10^8 m/s", "3x10^6 m/s", "1.5x10^8 m/s", "3x10^9 m/s",
+                    "A", "The speed of light in vacuum (c) is approximately 3x10^8 m/s.",
+                    "https://example.com/q1_image.png", "https://example.com/q1_sol_image.png" // Example URLs
+                ];
+                const exampleNVQ = [
+                    "NVQ", "Example: Calculate 5 factorial (5!).", "Mathematics", "Algebra", 4,
+                    "", "", "", "", // Options are blank for NVQ
+                    120, "5! = 5 * 4 * 3 * 2 * 1 = 120.",
+                    "", "" // No image URLs for this example
+                ];
+
+                const ws = XLSX.utils.aoa_to_sheet([headers, exampleMCQ, exampleNVQ]);
+                // Add comments/notes to headers if possible/desired for clarity
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Questions");
+                XLSX.writeFile(wb, "Test_Upload_Template_With_Images.xlsx"); // Updated filename
+            }
+
+             handleProcessExcel() {
+                this.setLoading(this.elements.processExcelBtn, this.elements.excelStatus, 'Processing...');
+                this.elements.excelStatus.setAttribute('data-status', ''); // Reset status attribute
+
+                try {
+                    const title = this.elements.excelConfigTitle.value.trim(); // Trim
+                    const type = this.elements.excelConfigType.value;
+                    const syllabusType = this.elements.excelConfigSyllabusType.value;
+                    const negativeMarksRaw = this.elements.excelConfigNegativeMarks.value;
+                    const subjects = this.elements.excelConfigSubjects.val();
+                    const file = this.elements.excelFileInput.files[0];
+
+                    if (!title) throw new Error("Test Title is required.");
+                    if (!subjects || subjects.length === 0) throw new Error("Please select at least one Subject.");
+                     if (!file) throw new Error("Please upload an Excel file.");
+                     if (negativeMarksRaw === '' || isNaN(parseFloat(negativeMarksRaw))) {
+                         throw new Error("Valid Negative Marks value is required.");
+                     }
+                    const negativeMarks = parseFloat(negativeMarksRaw);
+
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const sheetName = workbook.SheetNames[0];
+                            if (!sheetName) throw new Error("Excel file seems empty or invalid.");
+                            const worksheet = workbook.Sheets[sheetName];
+                            // Use raw: false to attempt parsing numbers/dates, defval: '' for empty cells
+                            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' });
+
+                            if (!jsonData || jsonData.length < 2) throw new Error("No data found in the Excel sheet (minimum header + 1 row).");
+
+                            // Expect headers in the first row
+                            const headers = jsonData[0].map(h => String(h).trim()); // Ensure headers are strings and trimmed
+                            const questionsData = this.parseExcelData(jsonData.slice(1), headers, negativeMarks);
+
+                            if (questionsData.length === 0) throw new Error("No valid questions parsed from the Excel file.");
+
+                             // Validate that subjects in Excel match selected subjects (optional but good)
+                             const excelSubjects = new Set(questionsData.map(q => q.subject));
+                             const selectedSubjectsSet = new Set(subjects);
+                             for (const excelSub of excelSubjects) {
+                                 if (!selectedSubjectsSet.has(excelSub)) {
+                                     console.warn(`Warning: Subject "${excelSub}" found in Excel but not selected in metadata.`);
+                                     // Optionally throw an error here if strict matching is required
+                                 }
+                             }
+
+
+                            const totalMarks = questionsData.reduce((sum, q) => sum + q.marks, 0);
+                             const testId = title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/^-+|-+$/g, '');
+                             if (!testId) throw new Error("Generated Test ID is invalid (check title).");
+
+                            const testData = {
+                                id: testId,
+                                title: title,
+                                type: type,
+                                Chapterwise: syllabusType === 'Chapterwise',
+                                description: `Test uploaded via Excel with ${questionsData.length} questions.`,
+                                duration: questionsData.length * 2, // Default duration
+                                questions: questionsData.length,
+                                subjects: subjects, // Use the subjects selected in the form
+                                difficulty: 'medium',
+                                marks: totalMarks,
+                                negativeMarks: negativeMarks,
+                                available: true,
+                                questions_data: questionsData
+                            };
+
+                            this.populateFormWithData(testData); // Populate the main form
+                            this.switchTab('form'); // Switch to the form tab for review
+                             this.setSuccess(this.elements.excelStatus, `Successfully processed ${questionsData.length} questions. Please review and upload from the 'Create with Form' tab.`);
+                             this.elements.excelStatus.setAttribute('data-status', 'success');
+
+
+                        } catch (err) {
+                             console.error("Error processing Excel data:", err);
+                             this.setError(this.elements.excelStatus, `Error: ${err.message}`);
+                             this.elements.excelStatus.setAttribute('data-status', 'error');
+                        } finally {
+                            this.setIdle(this.elements.processExcelBtn, 'Process Excel & Preview Form');
+                             this.elements.excelFileInput.value = ''; // Clear file input
+                        }
+                    };
+                     reader.onerror = (err) => {
+                         console.error("File Reader Error:", err);
+                         this.setError(this.elements.excelStatus, "Error reading the uploaded file.");
+                         this.elements.excelStatus.setAttribute('data-status', 'error');
+                         this.setIdle(this.elements.processExcelBtn, 'Process Excel & Preview Form');
+                          this.elements.excelFileInput.value = ''; // Clear file input
+                     }
+                    reader.readAsArrayBuffer(file);
+
+                } catch (error) {
+                     console.error("Error initiating Excel processing:", error);
+                     this.setError(this.elements.excelStatus, error.message);
+                     this.elements.excelStatus.setAttribute('data-status', 'error');
+                     this.setIdle(this.elements.processExcelBtn, 'Process Excel & Preview Form');
+                }
+            }
+
+
+            parseExcelData(rows, headers, negativeMarksValue) {
+                // Find indices of columns, case-insensitive and trimming whitespace
+                 const normalizeHeader = (h) => String(h).trim().toLowerCase();
+                const headerMap = headers.reduce((map, header, index) => {
+                    map[normalizeHeader(header)] = index;
+                    return map;
+                }, {});
+
+                // Check for essential headers
+                const requiredHeaders = ['questiontype', 'questiontext', 'subject', 'topic', 'marks', 'correctanswer', 'solution'];
+                for (const req of requiredHeaders) {
+                    if (!(req in headerMap)) {
+                        throw new Error(`Missing required Excel column header: ${req}`);
+                    }
+                }
+
+                const questions = [];
+                rows.forEach((row, rowIndex) => {
+                    // Skip empty rows (check if all cells are empty/null/undefined)
+                    if (row.every(cell => cell === null || cell === undefined || String(cell).trim() === '')) return;
+
+                    const rowNumForError = rowIndex + 2; // Excel row number (1-based index + header row)
+
+                    try {
+                        const getCell = (headerName) => {
+                             const index = headerMap[normalizeHeader(headerName)];
+                             // Return empty string if header doesn't exist or cell is empty/null/undefined
+                             return (index !== undefined && row[index] !== null && row[index] !== undefined) ? String(row[index]).trim() : '';
+                         };
+
+
+                         const questionTypeRaw = getCell('questionType');
+                        const questionType = questionTypeRaw.toUpperCase() === 'NVQ' ? 'NVQ' : 'MCQ'; // Default to MCQ if invalid/empty
+                        const marksRaw = getCell('marks');
+                        const marks = parseFloat(marksRaw);
+
+                         // Basic validation for critical fields in each row
+                         if (!getCell('questionText')) throw new Error(`Row ${rowNumForError}: Question Text is missing.`);
+                         if (!getCell('subject')) throw new Error(`Row ${rowNumForError}: Subject is missing.`);
+                         if (!getCell('topic')) throw new Error(`Row ${rowNumForError}: Topic is missing.`);
+                         if (marksRaw === '' || isNaN(marks) || marks < 0) throw new Error(`Row ${rowNumForError}: Invalid or missing Marks (must be a non-negative number).`);
+                         if (!getCell('correctAnswer')) throw new Error(`Row ${rowNumForError}: Correct Answer is missing.`);
+                         if (!getCell('solution')) throw new Error(`Row ${rowNumForError}: Solution is missing.`);
+
+
+                        const questionEntry = {
+                            id: questions.length + 1, // Use running count for ID
+                            subject: getCell('subject'),
+                            topic: getCell('topic'),
+                            questionType: questionType,
+                            questionText: getCell('questionText'),
+                            marks: marks,
+                            negativeMarks: negativeMarksValue, // Apply test-level negative marks
+                            solution: getCell('solution'),
+                             questionImageUrl: getCell('questionImageUrl') || undefined, // Add if present, else undefined
+                             solutionImageUrl: getCell('solutionImageUrl') || undefined, // Add if present, else undefined
+                        };
+
+                         // Remove undefined image URLs
+                         if (!questionEntry.questionImageUrl) delete questionEntry.questionImageUrl;
+                         if (!questionEntry.solutionImageUrl) delete questionEntry.solutionImageUrl;
+
+                        if (questionType === 'MCQ') {
+                             questionEntry.options = [getCell('optionA'), getCell('optionB'), getCell('optionC'), getCell('optionD')];
+                            if (questionEntry.options.some(o => o === '')) {
+                                throw new Error(`Row ${rowNumForError} (MCQ): All 4 options (A, B, C, D) are required.`);
+                            }
+                            const answerMap = {'A': 0, 'B': 1, 'C': 2, 'D': 3};
+                            const correct = getCell('correctAnswer').toUpperCase();
+                             if (!(correct in answerMap)) {
+                                 throw new Error(`Row ${rowNumForError} (MCQ): Correct Answer must be A, B, C, or D.`);
+                             }
+                            questionEntry.correctAnswer = answerMap[correct];
+                        } else { // NVQ
+                            questionEntry.options = ["nil"]; // Must be this for NVQ
+                            const correctNumRaw = getCell('correctAnswer');
+                            const correctNum = parseFloat(correctNumRaw);
+                             if (correctNumRaw === '' || isNaN(correctNum)) { // Check if empty or not a number
+                                 throw new Error(`Row ${rowNumForError} (NVQ): Correct Answer must be a valid number.`);
+                             }
+                            questionEntry.correctAnswer = correctNum;
+                        }
+
+                        questions.push(questionEntry);
+                    } catch (rowError) {
+                        // Add context to the error and re-throw to stop processing
+                         // Ensure the error message includes the row number if it doesn't already
+                         const message = rowError.message.includes(`Row ${rowNumForError}`) ? rowError.message : `Error parsing Excel Row ${rowNumForError}: ${rowError.message}`;
+                        throw new Error(message);
+                    }
+                });
+                return questions;
+            }
+
+
+            populateFormWithData(testData) {
+                // 1. Populate Step 1 Config (so Back button works correctly)
+                this.elements.configTitle.value = testData.title || '';
+                this.elements.configType.value = testData.type || 'JEE';
+                this.elements.configSyllabusType.value = testData.Chapterwise ? 'Chapterwise' : 'Full Syllabus';
+                this.elements.configNegativeMarks.value = testData.negativeMarks !== undefined ? testData.negativeMarks : 1;
+                // Use jQuery's .val() and .trigger() for Select2
+                 this.elements.configSubjects.val(testData.subjects || []).trigger('change');
+                // Ensure dynamic count inputs are hidden when populating from Excel/JSON
+                this.elements.subjectQuestionCounts.classList.add('hidden');
+                 this.elements.subjectQInputsContainer.innerHTML = ''; // Clear any generated inputs
+
+                // 2. Populate Step 2 Form Details
+                this.elements.description.value = testData.description || '';
+                this.elements.duration.value = testData.duration || '';
+                this.elements.totalMarks.value = testData.marks || 0; // Use calculated marks
+
+                // 3. Populate Questions List
+                this.elements.questionsList.innerHTML = ''; // Clear existing questions first
+                this.questionCounter = 0; // Reset counter before adding
+
+                if (testData.questions_data && Array.isArray(testData.questions_data)) {
+                    testData.questions_data.forEach(qData => {
+                         // --- FIX: Check template before attempting to add ---
+                        if (!this.questionTemplate) {
+                            console.error("Cannot populate question: template is missing.");
+                            this.setError(this.elements.uiStatus, "Error: Question template missing. Cannot populate form.");
+                            // Optionally throw an error to stop the whole process
+                            throw new Error("Question template is missing.");
+                         }
+                        // Use the template to add a new question field
+                        const newQuestionNode = this.questionTemplate.cloneNode(true);
+                         const index = this.questionCounter++; // Increment after getting index
+
+                         // --- Populate the cloned node ---
+                         newQuestionNode.id = `question-${index}`;
+                         newQuestionNode.querySelector('.question-header h4').textContent = `Question ${index + 1}`;
+
+                         newQuestionNode.querySelector('.question-type-select').value = qData.questionType || 'MCQ';
+                         newQuestionNode.querySelector('.question-text').value = qData.questionText || '';
+                         newQuestionNode.querySelector('.question-subject').value = qData.subject || '';
+                         newQuestionNode.querySelector('.question-topic').value = qData.topic || '';
+                         newQuestionNode.querySelector('.question-marks').value = qData.marks !== undefined ? qData.marks : 4;
+                         newQuestionNode.querySelector('.solution').value = qData.solution || '';
+
+                         // Image URLs
+                         const qImageUrlInput = newQuestionNode.querySelector('.question-image-url');
+                         const qImageUrlDisplay = newQuestionNode.querySelector('.question-image-display');
+                          // --- Add null checks ---
+                          if (qImageUrlDisplay) {
+                             if (qData.questionImageUrl) {
+                                 if(qImageUrlInput) qImageUrlInput.value = qData.questionImageUrl;
+                                 qImageUrlDisplay.textContent = `URL: ${qData.questionImageUrl}`;
+                                 qImageUrlDisplay.classList.remove('hidden');
+                                 qImageUrlDisplay.dataset.url = qData.questionImageUrl;
+                             } else {
+                                  if(qImageUrlInput) qImageUrlInput.value = '';
+                                  qImageUrlDisplay.textContent = 'No question image URL.';
+                                  qImageUrlDisplay.classList.add('hidden');
+                                  delete qImageUrlDisplay.dataset.url;
+                             }
+                         } else { console.error("Missing .question-image-display in template clone"); }
+
+
+                         const solImageUrlInput = newQuestionNode.querySelector('.solution-image-url');
+                         const solImageUrlDisplay = newQuestionNode.querySelector('.solution-image-display');
+                          // --- Add null checks ---
+                         if (solImageUrlDisplay) {
+                             if (qData.solutionImageUrl) {
+                                 if(solImageUrlInput) solImageUrlInput.value = qData.solutionImageUrl;
+                                 solImageUrlDisplay.textContent = `URL: ${qData.solutionImageUrl}`;
+                                 solImageUrlDisplay.classList.remove('hidden');
+                                 solImageUrlDisplay.dataset.url = qData.solutionImageUrl;
+
+                             } else {
+                                  if(solImageUrlInput) solImageUrlInput.value = '';
+                                  solImageUrlDisplay.textContent = 'No solution image URL.';
+                                  solImageUrlDisplay.classList.add('hidden');
+                                  delete solImageUrlDisplay.dataset.url;
+                             }
+                         } else { console.error("Missing .solution-image-display in template clone"); }
+
+
+                        // Type-specific fields
+                        const mcqFields = newQuestionNode.querySelector('.mcq-fields');
+                        const nvqFields = newQuestionNode.querySelector('.nvq-fields');
+
+                        if (qData.questionType === 'NVQ') {
+                           if(mcqFields) mcqFields.classList.add('hidden');
+                           if(nvqFields) nvqFields.classList.remove('hidden');
+                             const nvqInput = newQuestionNode.querySelector('.correct-answer-nvq');
+                             if(nvqInput) nvqInput.value = qData.correctAnswer !== undefined ? qData.correctAnswer : '';
+                        } else { // Default to MCQ
+                             if(mcqFields) mcqFields.classList.remove('hidden');
+                             if(nvqFields) nvqFields.classList.add('hidden');
+                             const options = qData.options || ['', '', '', ''];
+                             const optA = newQuestionNode.querySelector('.option-a');
+                             const optB = newQuestionNode.querySelector('.option-b');
+                             const optC = newQuestionNode.querySelector('.option-c');
+                             const optD = newQuestionNode.querySelector('.option-d');
+                             const correctMcq = newQuestionNode.querySelector('.correct-answer-mcq');
+
+                             if(optA) optA.value = options[0] || '';
+                             if(optB) optB.value = options[1] || '';
+                             if(optC) optC.value = options[2] || '';
+                             if(optD) optD.value = options[3] || '';
+                             if(correctMcq) correctMcq.value = qData.correctAnswer !== undefined ? qData.correctAnswer : 0; // Default to 'A'
+                        }
+
+                        this.elements.questionsList.appendChild(newQuestionNode);
+                    });
+                }
+                 // Ensure total marks are recalculated based on populated fields
+                 this.updateTotalMarks();
+
+                // 4. Show the populated form and enable upload
+                this.showFormStep(2);
+                // this.elements.uploadTestBtn.disabled = false; // Handled in showFormStep(2)
+            }
+
+            // --- JSON Tab ---
+            async handleJsonUpload() {
+                const statusDiv = this.elements.jsonStatus;
+                const uploadBtn = this.elements.uploadJsonBtn;
+                 statusDiv.textContent = ''; // Clear previous status
+                 statusDiv.setAttribute('data-status', '');
+
+                const jsonString = this.elements.jsonTextInput.value.trim();
+                if (!jsonString) {
+                    this.setError(statusDiv, 'Please paste JSON content first.');
+                     statusDiv.setAttribute('data-status', 'error');
+                    return;
+                }
+                this.setLoading(uploadBtn, statusDiv, 'Parsing & Uploading...');
+
+                try {
+                    const testData = JSON.parse(jsonString);
+                    // Add basic validation before uploading
+                     if (!testData.id || typeof testData.id !== 'string' || !testData.id.trim()) {
+                         throw new Error("Invalid or missing 'id' (must be a non-empty string).");
+                     }
+                      if (!testData.title || typeof testData.title !== 'string' || !testData.title.trim()) {
+                         throw new Error("Invalid or missing 'title' (must be a non-empty string).");
+                     }
+                      if (typeof testData.Chapterwise !== 'boolean') {
+                         throw new Error("Missing or invalid 'Chapterwise' field (must be true or false).");
+                     }
+                      if (!Array.isArray(testData.questions_data) || testData.questions_data.length === 0) {
+                         throw new Error("Invalid or missing 'questions_data' (must be a non-empty array).");
+                     }
+                     // Add more validation of internal structure if needed
+
+                    // Pass test details for popup
+                    await this.uploadTestData(testData, statusDiv, {title: testData.title, id: testData.id});
+
+
+                } catch (error) {
+                     console.error("JSON Upload/Parse Error:", error);
+                     // Check if it's a JSON parsing error
+                     if (error instanceof SyntaxError) {
+                          this.setError(statusDiv, `Invalid JSON format: ${error.message}`);
+                     } else {
+                         this.setError(statusDiv, `Upload failed: ${error.message}`);
+                     }
+                     statusDiv.setAttribute('data-status', 'error');
+                } finally {
+                    this.setIdle(uploadBtn, 'Upload JSON');
+                     // Clear textarea only on success (handled inside uploadTestData)
+                }
+            }
+
+
+            // --- Core function to save data to Firestore ---
+            async uploadTestData(testData, statusDiv, testDetails = null) {
+                // Basic validation
+                 if (!testData.id || !testData.title || !testData.questions_data) {
+                    throw new Error("Invalid data structure. 'id', 'title', and 'questions_data' are required.");
+                 }
+                  if (typeof testData.Chapterwise !== 'boolean') {
+                    throw new Error("JSON must contain the boolean field 'Chapterwise' (true or false).");
+                 }
+                // --- Use currentUserEmail to derive college ID ---
+                if (!this.currentUserEmail) {
+                    throw new Error("Authentication error: User email not found. Please log in again.");
+                }
+                const collegeId = this.getCollegeIdFromEmail(this.currentUserEmail);
+                if (collegeId === 'unknown' || collegeId === 'xxxx') {
+                     throw new Error(`Could not determine a valid college ID from email: ${this.currentUserEmail}`);
+                }
+                console.log(`Using college ID: ${collegeId}`); // Log for debugging
+
+                // Sanitize ID for Firestore path
+                 const sanitizedId = testData.id.trim().replace(/\//g, '_');
+                 if (!sanitizedId) {
+                     throw new Error("Test ID cannot be empty after sanitization.");
+                 }
+
+
+                 statusDiv.textContent = `Checking for existing test ID "${sanitizedId}" in college "${collegeId}"...`;
+                 statusDiv.setAttribute('data-status', '');
+
+
+                // --- Construct new collection paths ---
+                const testsCollectionPath = `tests_${collegeId}`;
+                const aggregatesCollectionPath = `test_aggregates_${collegeId}`;
+                const aggregateDocId = "all_tests"; // Document ID within the aggregate collection
+
+                const testRef = doc(db, testsCollectionPath, sanitizedId);
+                const aggregateDocRef = doc(db, aggregatesCollectionPath, aggregateDocId);
+
+                try {
+                    const docSnap = await getDoc(testRef);
+                    let proceed = true;
+
+                    if (docSnap.exists()) {
+                         // --- !!! IMPORTANT: Replace confirm() with a proper modal !!! ---
+                         if (!confirm(`A test with ID "${sanitizedId}" already exists for college "${collegeId}". Do you want to overwrite it?`)) {
+                             proceed = false;
+                             throw new Error("Upload cancelled by user. Test ID already exists.");
+                         } else {
+                            statusDiv.textContent = `Test ID "${sanitizedId}" exists. Overwriting...`;
+                         }
+                         // --- End of confirm() replacement area ---
+                    } else {
+                         statusDiv.textContent = 'Uploading new test data...';
+                    }
+
+                     if (!proceed) return; // Exit if user cancelled
+
+
+                    // Ensure essential fields have defaults
+                    testData.available = testData.available !== undefined ? testData.available : true;
+                    testData.difficulty = testData.difficulty || 'medium';
+                    testData.questions = testData.questions_data.length;
+                    testData.marks = testData.questions_data.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+                    testData.negativeMarks = Number(testData.negativeMarks) || 0;
+
+                    // 1. Save the full test data to tests_{college_id} collection
+                    await setDoc(testRef, testData);
+                    console.log(`Test data saved to: ${testsCollectionPath}/${sanitizedId}`);
+
+
+                    // 2. Update aggregated list in test_aggregates_{college_id} collection
+                    statusDiv.textContent = 'Updating aggregated test list...';
+                    const aggregateDocSnap = await getDoc(aggregateDocRef);
+                    // Initialize with an empty tests array if the document doesn't exist or has no tests field
+                    const currentAggregateData = aggregateDocSnap.exists() ? aggregateDocSnap.data() : { tests: [] };
+                    let testsList = Array.isArray(currentAggregateData.tests) ? currentAggregateData.tests : [];
+
+
+                    // Create metadata object for the aggregate list
+                     const metadata = {
+                        id: sanitizedId, // Use sanitized ID
+                        title: testData.title,
+                        type: testData.type,
+                        C: testData.Chapterwise, // Use 'C' as per previous example
+                        description: testData.description,
+                        duration: testData.duration,
+                        questions: testData.questions,
+                        subjects: testData.subjects,
+                        difficulty: testData.difficulty,
+                        marks: testData.marks,
+                        negativeMarks: testData.negativeMarks,
+                        available: testData.available,
+                    };
+
+                    // Check if test already exists in the list and update or add
+                    const existingIndex = testsList.findIndex(t => t.id === metadata.id);
+                    if (existingIndex > -1) {
+                        testsList[existingIndex] = metadata; // Update existing entry
+                        console.log(`Updated aggregate metadata for test ID: ${metadata.id}`);
+                    } else {
+                        testsList.push(metadata); // Add new entry
+                        console.log(`Added aggregate metadata for new test ID: ${metadata.id}`);
+                    }
+
+                    // Save the updated list back to the aggregate document
+                    await setDoc(aggregateDocRef, { tests: testsList, lastUpdated: new Date().toISOString() });
+                     console.log(`Aggregate data saved to: ${aggregatesCollectionPath}/${aggregateDocId}`);
+
+
+                    // --- Show success popup instead of direct reset ---
+                    this.showSuccessPopup(testDetails?.title || testData.title, sanitizedId);
+                    statusDiv.textContent = ''; // Clear status message from the form area
+                    statusDiv.removeAttribute('data-status');
+
+
+                 } catch (error) {
+                     console.error("Firestore Upload Error:", error);
+                      this.setError(statusDiv, `Failed to upload to database: ${error.message}`);
+                      statusDiv.setAttribute('data-status', 'error');
+                 }
+            }
+
+            // --- Show Success Popup ---
+            showSuccessPopup(title, id) {
+                if(this.elements.modalMessage) {
+                    this.elements.modalMessage.textContent = `Test "${title}" (ID: ${id}) has been successfully uploaded.`;
+                }
+                 if(this.elements.successModal) {
+                    this.elements.successModal.classList.remove('hidden');
+                    // Add slight delay for fade-in effect if desired
+                    // setTimeout(() => this.elements.successModal.style.opacity = '1', 10);
+                }
+            }
+
+             // --- Close Success Popup and Reset Form ---
+             closeSuccessPopup() {
+                if(this.elements.successModal) {
+                    this.elements.successModal.classList.add('hidden');
+                     // this.elements.successModal.style.opacity = '0'; // For fade out
+                }
+
+                // Now reset the relevant form/UI elements
+                 if (this.elements.uploadTestBtn) { // Check if form upload button exists
+                    this.elements.uploadTestBtn.disabled = true;
+                    this.showFormStep(1); // Go back to step 1
+                    this.elements.configTitle.value = '';
+                    this.elements.configSubjects.val(null).trigger('change'); // Resets Select2
+                    this.elements.subjectQuestionCounts.classList.add('hidden');
+                    this.elements.subjectQInputsContainer.innerHTML = '';
+                    this.elements.description.value = '';
+                    this.elements.duration.value = '';
+                    this.elements.questionsList.innerHTML = ''; // Clear question list in UI
+                    this.elements.uiStatus.textContent = ''; // Clear form status
+                    this.elements.uiStatus.removeAttribute('data-status');
+                    // Reset Step 1 fields too if needed
+                    this.elements.configType.value = 'JEE';
+                    this.elements.configSyllabusType.value = 'Chapterwise';
+                    this.elements.configNegativeMarks.value = 1;
+
+
+                 }
+                 if (this.elements.jsonTextInput) { // Check if JSON input exists
+                     this.elements.jsonTextInput.value = ''; // Clear JSON input
+                     this.elements.jsonStatus.textContent = ''; // Clear JSON status
+                     this.elements.jsonStatus.removeAttribute('data-status');
+                 }
+                  // Clear Excel fields on success if called from Excel processing (though upload happens via form)
+                 if (this.elements.excelFileInput) {
+                    this.elements.excelConfigTitle.value = '';
+                    this.elements.excelConfigSubjects.val(null).trigger('change');
+                    this.elements.excelFileInput.value = ''; // Clear file input
+                    this.elements.excelStatus.textContent = ''; // Clear Excel status
+                    this.elements.excelStatus.removeAttribute('data-status');
+                 }
+
+                 // Ensure idle state for potentially active buttons
+                 this.setIdle(this.elements.uploadTestBtn, 'Upload Test to Database');
+                 this.setIdle(this.elements.uploadJsonBtn, 'Upload JSON');
+                 this.setIdle(this.elements.processExcelBtn, 'Process Excel & Preview Form');
+
+            }
+
+
+            // --- General UI Helpers ---
+             setLoading(btn, statusDiv, text) {
+                if (btn) {
+                     btn.disabled = true;
+                     // Keep existing content, add spinner before
+                     btn.innerHTML = `<div class="spinner mr-2 inline-block"></div><span>${text}</span>`;
+                 }
+                 if (statusDiv) {
+                    statusDiv.textContent = text;
+                    // Use data attributes for styling success/error states if preferred
+                    statusDiv.className = 'status text-gray-600'; // Neutral color while loading
+                    statusDiv.setAttribute('data-status', 'loading');
+                 }
+            }
+             setError(statusDiv, message) {
+                 if (statusDiv) {
+                    statusDiv.textContent = message;
+                    statusDiv.className = 'status text-red-700'; // Error color
+                    statusDiv.setAttribute('data-status', 'error');
+                 }
+            }
+             setSuccess(statusDiv, message) {
+                 if (statusDiv) {
+                    statusDiv.textContent = message;
+                    statusDiv.className = 'status text-green-700'; // Success color
+                     statusDiv.setAttribute('data-status', 'success');
+                 }
+            }
+            setIdle(btn, text) {
+                 if (btn) {
+                     // Check if button is not already disabled by logic (e.g., upload button after reset)
+                     if (!btn.disabled) {
+                         btn.disabled = false; // Ensure it's enabled if logic allows
+                     }
+                     // Restore original text
+                     btn.innerHTML = `<span>${text}</span>`;
+                 }
+                 // Note: We don't clear statusDiv text here, only setLoading/Success/Error do
+            }
+
+        } // End Class TestUploader
+
+        // Initialize the page class on document ready
+        $(document).ready(() => {
+            window.uploader = new TestUploader();
+        });
+    </script>
+
+</body>
+</html>
+

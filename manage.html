@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin: Manage Tests - Exam Portal</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS Library (for potential future use, e.g., downloading data) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Supabase Client Library (if image editing is needed) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
+    <!-- Select2 Library -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        /* Custom Styles (same as upload.html for consistency) */
+        :root {
+            --primary: #15803d; /* Tailwind green-700 */
+            --primary-foreground: #ffffff;
+            --card: #ffffff;
+            --border: #e5e7eb; /* Tailwind gray-200 */
+            --muted: #f9fafb; /* Tailwind gray-50 */
+            --muted-foreground: #6b7280; /* Tailwind gray-500 */
+            --destructive: #b91c1c; /* Tailwind red-700 */
+            --destructive-hover: #991b1b; /* Tailwind red-800 */
+        }
+        #auth-status p { text-align: center; padding: 4rem 0; font-size: 1.25rem; color: var(--muted-foreground); }
+        .spinner { display: inline-block; width: 1.25rem; height: 1.25rem; border: 3px solid rgba(255, 255, 255, 0.3); border-top-color: var(--primary-foreground); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        pre { background-color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', Courier, monospace; font-size: 0.875rem; border: 1px solid #cbd5e1; max-height: 400px; overflow-y: auto; }
+
+        /* Select2 Styles Adjustments (same as upload.html) */
+        .select2-container .select2-selection--multiple { border: 1px solid var(--border) !important; border-radius: 0.375rem !important; padding: 0.3rem !important; min-height: 44px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice { background-color: var(--primary) !important; border: 1px solid #14532d !important; color: white !important; border-radius: 0.25rem !important; }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove { color: #dcfce7 !important; margin-right: 5px !important; }
+        .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover { color: white !important; }
+        .select2-container--default.select2-container--focus .select2-selection--multiple { border: 1px solid var(--primary) !important; box-shadow: 0 0 0 2px rgba(21, 128, 61, 0.2) !important; }
+        .select2-dropdown { border: 1px solid var(--border) !important; border-radius: 0.375rem !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+
+        /* Success Modal Styles (same as upload.html) */
+        #success-modal { transition: opacity 0.3s ease-in-out; }
+        #success-modal.hidden { opacity: 0; pointer-events: none; }
+
+        /* Availability Toggle Switch */
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* Edit form styling (similar to upload) */
+        #test-edit-view .form-group { margin-bottom: 1.25rem; text-align: left; }
+        #test-edit-view label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.875rem; }
+        #test-edit-view .form-input, #test-edit-view .form-textarea, #test-edit-view .form-select { width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 0.375rem; font-size: 1rem; transition: all 0.2s; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+        #test-edit-view .form-input:focus, #test-edit-view .form-textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(21, 128, 61, 0.2); }
+        #test-edit-view .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        #test-edit-view .question-item { background-color: var(--card); padding: 1.5rem; border-radius: 0.75rem; margin-bottom: 1.5rem; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        /* Style adjustments copied from upload.html for question items */
+         #test-edit-view .question-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+         #test-edit-view .question-header h4 { font-size: 1rem; color: #1f2937; }
+         #test-edit-view .delete-btn { background-color: var(--destructive); color: var(--primary-foreground); padding: 0.4rem 0.8rem; width: auto; font-size: 0.8rem; line-height: 1; box-shadow: none; border-radius: 0.375rem; }
+         #test-edit-view .delete-btn:hover { background-color: #ef4444; }
+         #test-edit-view .question-type-select-group { background-color: #f9fafb; padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid var(--border); margin-bottom: 1rem; }
+         #test-edit-view .image-upload-group { border: 1px solid #cceeff; background-color: #f0f8ff; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; }
+         #test-edit-view .image-upload-group.solution { border: 1px solid #ffeebb; background-color: #fffaf0; }
+         #test-edit-view .image-upload-flex { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+         #test-edit-view .image-upload-flex input[type="file"] { flex-grow: 1; padding: 0; min-width: 150px; }
+         #test-edit-view .image-upload-btn { width: auto; flex-shrink: 0; background-color: #3b82f6; font-size: 0.9rem; padding: 0.6rem 0.8rem; } /* Adjusted width */
+         #test-edit-view .image-upload-btn:hover:not(:disabled) { background-color: #2563eb; }
+         #test-edit-view .image-status { font-size: 0.8rem; margin-top: 0.5rem; color: #374151; min-height: 1.5rem; }
+         #test-edit-view .image-url-display { font-size: 0.8rem; word-break: break-all; color: #10b981; margin-top: 0.5rem; padding: 0.5rem; background-color: #e0fdf4; border-radius: 0.3rem; }
+         #test-edit-view .image-url-display:not([data-url]) { display: none; } /* Hide if no URL */
+
+
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-700">
+
+    <!-- Responsive Navigation Bar (Copied from upload.html) -->
+    <nav class="bg-white border-b border-gray-200 shadow-sm fixed top-0 left-0 right-0 z-50 h-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo/Brand -->
+                <div class="flex-shrink-0 flex items-center">
+                     <span class="text-xl font-bold text-green-700">Test Management Portal</span>
+                </div>
+                <!-- Desktop Menu & User Info -->
+                <div class="hidden md:flex md:items-center md:space-x-4">
+                    <a href="upload.html" class="text-gray-500 hover:text-gray-700 hover:border-b-2 hover:border-gray-300 px-3 py-2 text-sm font-medium">Upload Tests</a>
+                    <a href="manage.html" class="text-green-700 border-b-2 border-green-700 px-3 py-2 text-sm font-medium" aria-current="page">Manage Tests</a>
+                   <a href="user_guide.html" class="text-gray-500 hover:text-gray-700 hover:border-b-2 hover:border-gray-300 px-3 py-2 text-sm font-medium">User Guide</a>
+                    <button id="user-email-desktop" class="text-sm text-gray-500 ml-4"></span>
+                    <button type="button" id="logout-btn-desktop" class="ml-2 bg-red-700 hover:bg-red-800 text-white px-3 py-1.5 rounded-md text-sm font-medium transition duration-150 ease-in-out">Logout</button>
+                </div>
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-button" type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500" aria-controls="mobile-menu" aria-expanded="false">
+                        <span class="sr-only">Open main menu</span>
+                        <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                        <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div class="md:hidden hidden" id="mobile-menu">
+            <div class="pt-2 pb-3 space-y-1 px-2 sm:px-3">
+                <a href="upload.html" class="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">Upload Tests</a>
+                <a href="manage.html" class="bg-green-50 border-green-700 text-green-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium" aria-current="page">Manage Tests</a>
+                   <a href="user_guide.html" class="border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium">User Guide</a>
+            </div>
+            <div class="pt-4 pb-3 border-t border-gray-200 px-2 sm:px-3">
+                <div class="flex items-center px-2">
+                     <div class="ml-3">
+                        <div id="user-email-mobile" class="text-base font-medium text-gray-800"></div>
+                    </div>
+                </div>
+                <div class="mt-3 space-y-1">
+                    <button type="button" id="logout-btn-mobile" class="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Content Area with Padding Top -->
+    <div id="main-content" class="hidden pt-16">
+        <div class="container max-w-6xl mx-auto mt-8 mb-8 px-4"> <!-- Increased max-width for table -->
+
+            <!-- Test List View -->
+            <div id="test-list-view">
+                <h1 class="text-2xl font-semibold mb-6 text-green-800">Manage Tests</h1>
+                 <div id="list-status" class="status mb-4 text-center min-h-[24px] font-medium data-[status='success']:text-green-700 data-[status='error']:text-red-700">Loading tests...</div>
+                <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-x-auto">
+                     <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qs</th>
+                                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tests-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Test rows will be populated here -->
+                             <tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">No tests found.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Test Edit View (Hidden by default) -->
+            <div id="test-edit-view" class="hidden">
+                 <h1 class="text-2xl font-semibold mb-6 text-green-800">Edit Test</h1>
+                 <div class="card bg-white border border-gray-200 rounded-lg shadow-sm p-6 md:p-8">
+                     <!-- Form structure similar to upload.html Step 1+2 -->
+                     <form id="edit-form" onsubmit="return false;">
+                        <input type="hidden" id="edit-original-test-id"> <!-- To store the ID being edited -->
+                        <h2 class="text-xl font-semibold mb-4">Test Details</h2>
+                        <div class="form-grid">
+                            <div class="form-group"><label for="edit-title">Test Title</label><input type="text" id="edit-title" class="form-input" required></div>
+                            <div class="form-group"><label for="edit-type">Exam Type</label>
+                                <select id="edit-type" class="form-select" required>
+                                    <option value="JEE">JEE</option>
+                                    <option value="NEET">NEET</option>
+                                    <option value="KCET">KCET</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label for="edit-syllabus-type">Syllabus Type</label>
+                                <select id="edit-syllabus-type" class="form-select" required>
+                                    <option value="Chapterwise">Chapterwise</option>
+                                    <option value="Full Syllabus">Full Syllabus</option>
+                                </select>
+                             </div>
+                        </div>
+                        <div class="form-group"><label for="edit-description">Description</label><textarea id="edit-description" class="form-textarea" rows="3"></textarea></div>
+                        <div class="form-grid">
+                            <div class="form-group"><label for="edit-duration">Duration (mins)</label><input type="number" id="edit-duration" class="form-input" required></div>
+                            <div class="form-group"><label for="edit-negative-marks">Negative Marks</label><input type="number" step="0.25" id="edit-negative-marks" class="form-input" required></div>
+                             <div class="form-group"><label for="edit-total-marks">Total Marks (auto)</label><input type="number" id="edit-total-marks" class="form-input bg-gray-100" disabled></div>
+                        </div>
+                         <div class="form-group">
+                            <label for="edit-subjects">Subjects</label>
+                            <select id="edit-subjects" class="form-select" multiple="multiple" style="width: 100%;" required>
+                                <option value="Physics">Physics</option>
+                                <option value="Chemistry">Chemistry</option>
+                                <option value="Mathematics">Mathematics</option>
+                                <option value="Biology">Biology</option>
+                                <option value="Botany">Botany</option>
+                                <option value="Zoology">Zoology</option>
+                            </select>
+                        </div>
+
+                        <div id="edit-questions-container" class="mt-8 border-t border-gray-200 pt-6">
+                            <h2 class="text-xl font-semibold mb-4">Questions</h2>
+                            <div id="edit-questions-list" class="space-y-6"></div>
+                            <button type="button" class="btn btn-secondary mt-4 w-auto bg-gray-600 text-white py-2 px-5 rounded-lg font-semibold shadow-md hover:bg-gray-500" id="edit-add-question-btn">+ Add Question</button>
+                        </div>
+
+                        <div class="text-right mt-8 flex justify-end gap-3 flex-wrap">
+                            <button type="button" class="btn btn-secondary w-auto flex-grow sm:flex-grow-0 bg-gray-600 text-white py-2.5 px-6 rounded-lg font-semibold shadow-md hover:bg-gray-500" id="cancel-edit-btn">Cancel</button>
+                            <button type="button" class="btn w-auto flex-grow sm:flex-grow-0 bg-green-700 text-white py-2.5 px-6 rounded-lg font-semibold shadow-md hover:bg-green-600 disabled:bg-gray-400 disabled:opacity-70 disabled:cursor-not-allowed" id="save-changes-btn">Save Changes</button>
+                        </div>
+                    </form>
+                    <div id="edit-status" class="status mt-6 text-center min-h-[24px] font-medium data-[status='success']:text-green-700 data-[status='error']:text-red-700"></div>
+                 </div>
+            </div>
+
+        </div> <!-- End Container -->
+    </div> <!-- End Main Content -->
+
+    <!-- Authentication Status -->
+    <div id="auth-status" class="pt-16">
+        <p>Loading... Checking authentication status.</p>
+    </div>
+
+    <!-- Success Modal (Copied from upload.html) -->
+    <div id="success-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[100] flex items-center justify-center">
+        <!-- ... Modal content (same as upload.html) ... -->
+         <div class="relative mx-auto p-6 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="text-center">
+                <!-- Icon can be changed based on message type if needed -->
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                    <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Success!</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p class="text-sm text-gray-600" id="modal-message">Operation successful.</p>
+                </div>
+                <div class="items-center px-4 py-3">
+                    <button id="close-modal-btn" class="px-4 py-2 bg-green-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-300">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Question Item Template (Copied from upload.html) -->
+    <template id="question-item-template">
+         <!-- ... Template content (same as upload.html) ... -->
+          <div class="question-item bg-white p-6 rounded-lg border border-gray-200 shadow-sm mb-6">
+            <div class="question-header flex justify-between items-center mb-4 pb-2 border-b border-gray-200">
+                <h4 class="text-base font-semibold text-gray-800">Question X</h4>
+                <button type="button" class="btn delete-btn bg-red-600 text-white py-1 px-3 rounded text-xs font-medium hover:bg-red-700 shadow-none">Delete Question</button>
+            </div>
+
+            <div class="form-group question-type-select-group bg-gray-50 p-3 rounded-md border border-gray-200 mb-4">
+                <label class="block mb-1.5 font-medium text-sm">Question Type</label>
+                <select class="form-select question-type-select w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20">
+                    <option value="MCQ">MCQ (Multiple Choice Question)</option>
+                    <option value="NVQ">NVQ (Numerical Value Question)</option>
+                </select>
+            </div>
+
+            <div class="form-group mb-4"><label class="block mb-1.5 font-medium text-sm">Question Text</label><textarea class="form-textarea question-text w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" rows="3" required></textarea></div>
+
+            <!-- QUESTION IMAGE UPLOAD SECTION -->
+            <div class="image-upload-group border border-blue-200 bg-blue-50 p-4 rounded-md mt-4">
+                <label class="block mb-2 font-medium text-sm text-blue-800">Question Image (Optional)</label>
+                <div class="image-upload-flex flex gap-2 items-center flex-wrap">
+                    <input type="file" class="form-input question-image-file flex-grow p-0 border-none file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200" accept="image/jpeg, image/png, image/webp">
+                    <button type="button" class="btn image-upload-btn question-image-btn w-auto shrink-0 bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-semibold shadow-sm hover:bg-blue-500">Upload Qs. Image</button>
+                </div>
+                <input type="hidden" class="question-image-url" value="">
+                <div class="image-status question-image-status text-xs mt-2 text-gray-600 min-h-[1.5rem]">Ready to upload.</div>
+                <div class="image-url-display hidden mt-2 p-2 bg-blue-100 text-blue-700 text-xs rounded break-all data-[url]:block">No question image URL.</div>
+            </div>
+
+            <!-- MCQ Fields - Visible by default -->
+            <div class="mcq-fields mt-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Option A</label><input type="text" class="form-input option-a w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" value="A"></div>
+                    <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Option B</label><input type="text" class="form-input option-b w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" value="B"></div>
+                    <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Option C</label><input type="text" class="form-input option-c w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" value="C"></div>
+                    <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Option D</label><input type="text" class="form-input option-d w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" value="D"></div>
+                </div>
+                <div class="form-group">
+                    <label class="block mb-1.5 font-medium text-sm">Correct Answer (MCQ)</label>
+                    <select class="form-select correct-answer-mcq w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20">
+                        <option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- NVQ Fields - Hidden by default -->
+            <div class="nvq-fields hidden mt-4">
+                <div class="form-group">
+                    <label class="block mb-1.5 font-medium text-sm">Correct Numerical Answer (NVQ)</label>
+                    <input type="number" step="any" class="form-input correct-answer-nvq w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" placeholder="e.g., 10.5 or 0.02">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Subject</label><input type="text" class="form-input question-subject w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" required></div>
+                <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Topic</label><input type="text" class="form-input question-topic w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" required></div>
+                <div class="form-group"><label class="block mb-1.5 font-medium text-sm">Marks</label><input type="number" class="form-input question-marks w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" value="4" step="0.25" required></div>
+            </div>
+            <div class="form-group mt-4"><label class="block mb-1.5 font-medium text-sm">Solution Text</label><textarea class="form-textarea solution w-full p-2 border border-gray-200 rounded-md text-base shadow-sm focus:border-green-600 focus:ring focus:ring-green-600/20" rows="2" required></textarea></div>
+
+            <!-- SOLUTION IMAGE UPLOAD SECTION -->
+            <div class="image-upload-group solution border border-yellow-300 bg-yellow-50 p-4 rounded-md mt-4">
+                 <label class="block mb-2 font-medium text-sm text-yellow-800">Solution Image (Optional)</label>
+                <div class="image-upload-flex flex gap-2 items-center flex-wrap">
+                    <input type="file" class="form-input solution-image-file flex-grow p-0 border-none file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-yellow-100 file:text-yellow-700 hover:file:bg-yellow-200" accept="image/jpeg, image/png, image/webp">
+                    <button type="button" class="btn image-upload-btn solution-image-btn w-auto shrink-0 bg-yellow-500 text-white py-2 px-4 rounded-md text-sm font-semibold shadow-sm hover:bg-yellow-600" style="background-color: #f59e0b;">Upload Sol. Image</button>
+                </div>
+                <input type="hidden" class="solution-image-url" value="">
+                <div class="image-status solution-image-status text-xs mt-2 text-gray-600 min-h-[1.5rem]">Ready to upload.</div>
+                <div class="image-url-display hidden mt-2 p-2 bg-yellow-100 text-yellow-700 text-xs rounded break-all data-[url]:block">No solution image URL.</div>
+            </div>
+        </div>
+    </template>
+
+
+    <script type="module">
+        // Import Firebase & Supabase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, updateDoc, runTransaction, setLogLevel } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+        // Config (same as upload.html)
+        const firebaseConfig = { /* ... your config ... */
+             apiKey: "AIzaSyCQ34ZAWWCMuaQ01fvX0sI-YdklK0mJ5aw",
+             authDomain: "testseries-38752.firebaseapp.com",
+             projectId: "testseries-38752",
+             storageBucket: "testseries-38752.firebasestorage.app",
+             messagingSenderId: "519384534407",
+             appId: "1:519384534407:web:201265a9d703708334d722"
+        };
+        const SUPABASE_URL = 'https://evetjiyruynvqhjfmuny.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIZDI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2ZXRqaXlydXludnFoamZtdW55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1ODIyNjUsImV4cCI6MjA3NTE1ODI2NX0.5wjRCHPesj_4OywiFyFyh3uuYtD8zOGBY9aARUAOmxU';
+        const BUCKET_NAME = 'Photos';
+
+        // Initialize Clients
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        setLogLevel('debug'); // Enable Firestore debug logging
+
+        // ManageTests Class
+        class ManageTests {
+             constructor() {
+                this.currentUserId = null;
+                this.currentUserEmail = null;
+                this.collegeId = null; // Store derived college ID
+                this.aggregateListenerUnsubscribe = null; // To detach listener on logout/error
+                this.currentTestsData = []; // Store the latest fetched test list
+                this.editingTestId = null; // Store ID of test being edited
+                this.questionCounter = 0; // For adding questions in edit mode
+                const template = document.getElementById('question-item-template');
+                this.questionTemplate = (template && template.content && template.content.firstElementChild) ? template.content.firstElementChild : null;
+                 if (!this.questionTemplate) { console.error("CRITICAL: Question item template not found!"); }
+
+
+                this.elements = {
+                    authStatus: document.getElementById('auth-status'),
+                    mainContent: document.getElementById('main-content'),
+                    // Nav elements
+                    userEmailDesktop: document.getElementById('user-email-desktop'),
+                    userEmailMobile: document.getElementById('user-email-mobile'),
+                    logoutBtnDesktop: document.getElementById('logout-btn-desktop'),
+                    logoutBtnMobile: document.getElementById('logout-btn-mobile'),
+                    mobileMenuButton: document.getElementById('mobile-menu-button'),
+                    mobileMenu: document.getElementById('mobile-menu'),
+
+                    // List View
+                    testListView: document.getElementById('test-list-view'),
+                    testsTableBody: document.getElementById('tests-table-body'),
+                    listStatus: document.getElementById('list-status'),
+
+                    // Edit View
+                    testEditView: document.getElementById('test-edit-view'),
+                    editForm: document.getElementById('edit-form'),
+                    editOriginalTestId: document.getElementById('edit-original-test-id'),
+                    editTitle: document.getElementById('edit-title'),
+                    editType: document.getElementById('edit-type'),
+                    editSyllabusType: document.getElementById('edit-syllabus-type'),
+                    editDescription: document.getElementById('edit-description'),
+                    editDuration: document.getElementById('edit-duration'),
+                    editNegativeMarks: document.getElementById('edit-negative-marks'),
+                    editTotalMarks: document.getElementById('edit-total-marks'),
+                    editSubjects: $('#edit-subjects'), // jQuery for Select2
+                    editQuestionsList: document.getElementById('edit-questions-list'),
+                    editAddQuestionBtn: document.getElementById('edit-add-question-btn'),
+                    cancelEditBtn: document.getElementById('cancel-edit-btn'),
+                    saveChangesBtn: document.getElementById('save-changes-btn'),
+                    editStatus: document.getElementById('edit-status'),
+
+                    // Modal Elements
+                    successModal: document.getElementById('success-modal'),
+                    modalMessage: document.getElementById('modal-message'),
+                    closeModalBtn: document.getElementById('close-modal-btn'),
+                };
+
+                this.initializeSelect2();
+                this.setupAuthListener();
+            }
+
+            // --- Get College ID from Email (same as upload.html) ---
+            getCollegeIdFromEmail(email) {
+                 if (!email || typeof email !== 'string') return 'unknown';
+                 const collegeId = email.substring(0, 4).toLowerCase();
+                 return collegeId || 'xxxx'; // Fallback
+            }
+
+            initializeSelect2() {
+                // Initialize Select2 for the edit form's subjects dropdown
+                 this.elements.editSubjects.select2({ placeholder: "Select subjects..." });
+            }
+
+            setupAuthListener() {
+                onAuthStateChanged(auth, (user) => {
+                    if (user && user.email) { // Ensure email exists
+                        this.currentUserId = user.uid;
+                        this.currentUserEmail = user.email;
+                        this.collegeId = this.getCollegeIdFromEmail(user.email); // Derive college ID
+
+                        if (this.collegeId === 'unknown' || this.collegeId === 'xxxx') {
+                             console.error("Could not determine college ID. Aborting data fetch.");
+                             this.setError(this.elements.listStatus, `Error: Could not determine college ID from email "${user.email}".`);
+                             this.elements.authStatus.classList.add('hidden');
+                             this.elements.mainContent.classList.remove('hidden'); // Show main content but with error
+                             this.showListView(); // Show list view with error message
+                             return;
+                        }
+
+                        this.elements.userEmailDesktop.textContent = user.email;
+                        this.elements.userEmailMobile.textContent = user.email;
+                        this.elements.authStatus.classList.add('hidden');
+                        this.elements.mainContent.classList.remove('hidden');
+                        this.setupEventListeners();
+                        this.fetchAndDisplayTests(); // Fetch data after auth
+                        this.showListView(); // Show list view initially
+
+                    } else {
+                        // User logged out or email missing
+                        if (this.aggregateListenerUnsubscribe) {
+                            this.aggregateListenerUnsubscribe(); // Detach listener
+                            this.aggregateListenerUnsubscribe = null;
+                        }
+                        this.currentUserId = null;
+                        this.currentUserEmail = null;
+                        this.collegeId = null;
+                        this.currentTestsData = [];
+                        console.log("No user signed in or email missing. Redirecting...");
+                        window.location.href = 'login.html'; // Redirect to login
+                    }
+                });
+            }
+
+             setupEventListeners() {
+                // Logout buttons
+                this.elements.logoutBtnDesktop.addEventListener('click', () => signOut(auth));
+                this.elements.logoutBtnMobile.addEventListener('click', () => signOut(auth));
+
+                // Mobile menu toggle
+                this.elements.mobileMenuButton.addEventListener('click', () => {
+                    const expanded = this.elements.mobileMenuButton.getAttribute('aria-expanded') === 'true' || false;
+                    this.elements.mobileMenuButton.setAttribute('aria-expanded', !expanded);
+                    this.elements.mobileMenu.classList.toggle('hidden');
+                    this.elements.mobileMenuButton.querySelector('svg:first-child').classList.toggle('hidden');
+                    this.elements.mobileMenuButton.querySelector('svg:last-child').classList.toggle('hidden');
+                });
+
+                 // Event delegation for table body clicks (toggle, edit)
+                 this.elements.testsTableBody.addEventListener('change', e => {
+                    if (e.target.classList.contains('availability-toggle')) {
+                        const testId = e.target.dataset.testid;
+                        const isAvailable = e.target.checked;
+                        this.handleAvailabilityToggle(testId, isAvailable);
+                    }
+                });
+                 this.elements.testsTableBody.addEventListener('click', e => {
+                    if (e.target.classList.contains('edit-btn')) {
+                         e.preventDefault(); // Prevent default if it's an anchor/button
+                        const testId = e.target.dataset.testid;
+                        this.handleEditClick(testId);
+                    }
+                 });
+
+
+                // Edit View Buttons & Interactions
+                this.elements.cancelEditBtn.addEventListener('click', () => this.showListView());
+                this.elements.saveChangesBtn.addEventListener('click', () => this.handleSaveChanges());
+                 this.elements.editAddQuestionBtn.addEventListener('click', () => this.addQuestionField(null, 4, 'edit')); // Add to edit form
+                 this.elements.editQuestionsList.addEventListener('click', e => this.handleQuestionListClick(e, 'edit')); // Delegate clicks within edit form's list
+                 this.elements.editQuestionsList.addEventListener('change', e => this.handleQuestionListChange(e, 'edit')); // Delegate changes within edit form's list
+
+                // Modal Close Button
+                this.elements.closeModalBtn.addEventListener('click', () => this.closeSuccessPopup());
+            }
+
+            // Fetch tests from the aggregate collection
+            fetchAndDisplayTests() {
+                if (!this.collegeId) {
+                    this.setError(this.elements.listStatus, "Cannot fetch tests: College ID not determined.");
+                    return;
+                }
+
+                const aggregatesCollectionPath = `test_aggregates_${this.collegeId}`;
+                const aggregateDocRef = doc(db, aggregatesCollectionPath, "all_tests");
+
+                this.setLoading(null, this.elements.listStatus, 'Loading tests...');
+
+                // Detach previous listener if exists
+                if (this.aggregateListenerUnsubscribe) {
+                    this.aggregateListenerUnsubscribe();
+                }
+
+                // Listen for real-time updates
+                this.aggregateListenerUnsubscribe = onSnapshot(aggregateDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        this.currentTestsData = Array.isArray(data.tests) ? data.tests : [];
+                        this.renderTestList(this.currentTestsData);
+                        this.setSuccess(this.elements.listStatus, `Loaded ${this.currentTestsData.length} tests.`);
+                    } else {
+                        // Document doesn't exist, likely no tests uploaded for this college yet
+                        this.currentTestsData = [];
+                        this.renderTestList([]);
+                        this.setSuccess(this.elements.listStatus, "No tests found for this college yet.");
+                    }
+                     this.elements.listStatus.setAttribute('data-status','success'); // Or set idle
+                     setTimeout(() => { // Clear status after a bit
+                        if (this.elements.listStatus.getAttribute('data-status') === 'success') {
+                           this.elements.listStatus.textContent = '';
+                           this.elements.listStatus.removeAttribute('data-status');
+                        }
+                     }, 3000);
+
+
+                }, (error) => {
+                    console.error("Error fetching test list:", error);
+                    this.setError(this.elements.listStatus, `Error loading tests: ${error.message}`);
+                     this.elements.listStatus.setAttribute('data-status','error');
+                    this.currentTestsData = []; // Clear data on error
+                    this.renderTestList([]); // Render empty list
+                    // Consider detaching listener on persistent errors
+                    // if (this.aggregateListenerUnsubscribe) { this.aggregateListenerUnsubscribe(); }
+                });
+            }
+
+             // Render the list of tests in the table
+             renderTestList(tests) {
+                this.elements.testsTableBody.innerHTML = ''; // Clear existing rows
+
+                if (!tests || tests.length === 0) {
+                    this.elements.testsTableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">No tests found.</td></tr>`;
+                    return;
+                }
+
+                // Sort tests alphabetically by title (optional)
+                tests.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+
+
+                tests.forEach(test => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">${test.title || 'N/A'}</div>
+                            <div class="text-xs text-gray-500">${test.description ? (test.description.length > 50 ? test.description.substring(0, 50) + '...' : test.description) : ''}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${test.id || 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${test.type || 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${test.questions || '0'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                            <label class="toggle-switch">
+                                <input type="checkbox" class="availability-toggle" data-testid="${test.id}" ${test.available ? 'checked' : ''}>
+                                <span class="slider"></span>
+                            </label>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button class="edit-btn text-indigo-600 hover:text-indigo-900" data-testid="${test.id}">Edit</button>
+                            <!-- Add Delete button later if needed -->
+                        </td>
+                    `;
+                    this.elements.testsTableBody.appendChild(row);
+                });
+            }
+
+            // Handle Availability Toggle Change
+            async handleAvailabilityToggle(testId, isAvailable) {
+                if (!this.collegeId || !testId) {
+                     console.error("Missing collegeId or testId for availability toggle.");
+                     this.showPopupMessage("Error updating status: Missing required IDs.", "error"); // Use popup for user feedback
+                     return;
+                }
+                console.log(`Toggling availability for test ${testId} to ${isAvailable}`);
+
+                const testsCollectionPath = `tests_${this.collegeId}`;
+                const aggregatesCollectionPath = `test_aggregates_${this.collegeId}`;
+                const aggregateDocRef = doc(db, aggregatesCollectionPath, "all_tests");
+                const testDocRef = doc(db, testsCollectionPath, testId);
+
+                 // Find the specific checkbox to potentially disable during update
+                 const toggleInput = this.elements.testsTableBody.querySelector(`input.availability-toggle[data-testid="${testId}"]`);
+                 if(toggleInput) toggleInput.disabled = true;
+
+
+                 try {
+                     // Use a transaction to update both documents atomically (best practice)
+                     await runTransaction(db, async (transaction) => {
+                         // 1. Get the current aggregate document
+                         const aggregateDocSnap = await transaction.get(aggregateDocRef);
+                         if (!aggregateDocSnap.exists()) {
+                             throw new Error("Aggregate document not found.");
+                         }
+                         const aggregateData = aggregateDocSnap.data();
+                         let testsList = Array.isArray(aggregateData.tests) ? aggregateData.tests : [];
+
+                         // 2. Find the test in the aggregate list and update its 'available' status
+                         const testIndex = testsList.findIndex(t => t.id === testId);
+                         if (testIndex === -1) {
+                             console.warn(`Test ID ${testId} not found in aggregate list during toggle.`);
+                             // Decide how to handle: maybe log, maybe still update main doc?
+                             // For now, we'll proceed to update the main doc but skip aggregate update.
+                         } else {
+                              testsList[testIndex].available = isAvailable;
+                              // Update the aggregate document within the transaction
+                               transaction.set(aggregateDocRef, { tests: testsList, lastUpdated: new Date().toISOString() }); // Overwrite the whole array
+                         }
+
+
+                         // 3. Update the 'available' field in the main test document
+                         transaction.update(testDocRef, { available: isAvailable });
+                     });
+
+                     console.log(`Successfully updated availability for test ${testId} to ${isAvailable}`);
+                     // The onSnapshot listener will automatically refresh the UI.
+                      this.showPopupMessage(`Availability for test "${testId}" updated.`, "success"); // Show feedback
+
+                 } catch (error) {
+                     console.error("Error updating test availability:", error);
+                     this.showPopupMessage(`Error updating status for ${testId}: ${error.message}`, "error");
+                     // Revert the checkbox state in the UI if the update failed
+                     if (toggleInput) {
+                        toggleInput.checked = !isAvailable; // Revert visual state
+                     }
+                 } finally {
+                      if(toggleInput) toggleInput.disabled = false; // Re-enable toggle
+                 }
+            }
+
+
+            // Handle Edit Button Click
+            async handleEditClick(testId) {
+                if (!this.collegeId || !testId) {
+                     console.error("Missing collegeId or testId for edit.");
+                      this.showPopupMessage("Error loading test data: Missing required IDs.", "error");
+                     return;
+                }
+                console.log(`Editing test: ${testId}`);
+                 this.setLoading(null, this.elements.listStatus, `Loading test ${testId} for editing...`); // Show loading in list status
+
+                 const testsCollectionPath = `tests_${this.collegeId}`;
+                 const testDocRef = doc(db, testsCollectionPath, testId);
+
+                 try {
+                    const docSnap = await getDoc(testDocRef);
+                    if (docSnap.exists()) {
+                        const testData = docSnap.data();
+                        this.editingTestId = testId; // Store the ID being edited
+                        this.populateEditForm(testData);
+                        this.showEditView(); // Switch UI
+                        this.elements.listStatus.textContent = ''; // Clear list status
+                        this.elements.listStatus.removeAttribute('data-status');
+                    } else {
+                        throw new Error(`Test document with ID "${testId}" not found in ${testsCollectionPath}.`);
+                    }
+                 } catch (error) {
+                     console.error("Error fetching test data for edit:", error);
+                     this.setError(this.elements.listStatus, `Error loading test: ${error.message}`);
+                      this.elements.listStatus.setAttribute('data-status','error');
+                      this.showListView(); // Stay on list view on error
+                 }
+                 // No finally needed here for loading state, as success switches view, error shows message
+            }
+
+            // Populate the Edit Form
+             populateEditForm(testData) {
+                if (!testData) return;
+
+                this.elements.editOriginalTestId.value = testData.id || ''; // Store original ID
+                this.elements.editTitle.value = testData.title || '';
+                this.elements.editType.value = testData.type || 'JEE';
+                this.elements.editSyllabusType.value = testData.Chapterwise ? 'Chapterwise' : 'Full Syllabus';
+                this.elements.editDescription.value = testData.description || '';
+                this.elements.editDuration.value = testData.duration || '';
+                this.elements.editNegativeMarks.value = testData.negativeMarks !== undefined ? testData.negativeMarks : 1;
+                this.elements.editTotalMarks.value = testData.marks || 0;
+                this.elements.editSubjects.val(testData.subjects || []).trigger('change'); // Use jQuery for Select2
+
+                // Populate Questions
+                this.elements.editQuestionsList.innerHTML = '';
+                this.questionCounter = 0; // Reset counter for edit form
+
+                 if (this.questionTemplate && testData.questions_data && Array.isArray(testData.questions_data)) {
+                     testData.questions_data.forEach(qData => {
+                        this.addQuestionField(qData.subject, qData.marks, 'edit', qData); // Pass 'edit' context and qData
+                    });
+                 } else if (!this.questionTemplate) {
+                     this.setError(this.elements.editStatus, "Error: Question template missing. Cannot populate questions.");
+                 } else {
+                     console.warn("No questions data found in test data to populate.");
+                 }
+
+                this.updateTotalMarks('edit'); // Update total marks for the edit form
+                 // Ensure Save button is enabled when form is populated
+                 this.elements.saveChangesBtn.disabled = this.elements.editQuestionsList.children.length === 0;
+            }
+
+            // Show/Hide Views
+            showListView() {
+                 this.elements.testListView.classList.remove('hidden');
+                 this.elements.testEditView.classList.add('hidden');
+                 this.editingTestId = null; // Clear editing state
+                 this.elements.editStatus.textContent = ''; // Clear edit status
+                 this.elements.editStatus.removeAttribute('data-status');
+                 // Ensure save button is reset (although should be handled by setIdle)
+                 this.setIdle(this.elements.saveChangesBtn, 'Save Changes');
+            }
+             showEditView() {
+                this.elements.testListView.classList.add('hidden');
+                this.elements.testEditView.classList.remove('hidden');
+                 this.elements.editStatus.textContent = ''; // Clear edit status
+                 this.elements.editStatus.removeAttribute('data-status');
+                 // Ensure save button is enabled if questions exist
+                 this.elements.saveChangesBtn.disabled = this.elements.editQuestionsList.children.length === 0;
+            }
+
+             // Handle Save Changes Click
+            async handleSaveChanges() {
+                const originalTestId = this.elements.editOriginalTestId.value;
+                 if (!originalTestId) {
+                     this.setError(this.elements.editStatus, "Error: Original Test ID is missing. Cannot save.");
+                     return;
+                 }
+                if (!this.collegeId) {
+                     this.setError(this.elements.editStatus, "Error: College ID is missing. Cannot save.");
+                     return;
+                }
+
+                const saveBtn = this.elements.saveChangesBtn;
+                const statusDiv = this.elements.editStatus;
+
+                this.setLoading(saveBtn, statusDiv, 'Validating & Saving...');
+
+                try {
+                     // Build the updated test data object from the edit form
+                     const updatedTestData = this.buildTestDataFromForm('edit', originalTestId); // Pass context and original ID
+
+
+                    // Construct paths using collegeId and ORIGINAL test ID
+                    const testsCollectionPath = `tests_${this.collegeId}`;
+                    const aggregatesCollectionPath = `test_aggregates_${this.collegeId}`;
+                    const testDocRef = doc(db, testsCollectionPath, originalTestId);
+                    const aggregateDocRef = doc(db, aggregatesCollectionPath, "all_tests");
+
+
+                     // Use a transaction for atomic update
+                    await runTransaction(db, async (transaction) => {
+                        // 1. Get the current aggregate document
+                        const aggregateDocSnap = await transaction.get(aggregateDocRef);
+                        if (!aggregateDocSnap.exists()) {
+                            // Should ideally not happen if tests exist, but handle defensively
+                            console.warn("Aggregate document not found during save. Creating it.");
+                            // Initialize testsList as empty array
+                        }
+                        const aggregateData = aggregateDocSnap.exists() ? aggregateDocSnap.data() : { tests: [] };
+                        let testsList = Array.isArray(aggregateData.tests) ? aggregateData.tests : [];
+
+                        // 2. Create updated metadata for the aggregate list
+                         const updatedMetadata = {
+                            id: originalTestId, // IMPORTANT: Use original ID here
+                            title: updatedTestData.title, // Use potentially updated title
+                            type: updatedTestData.type,
+                            C: updatedTestData.Chapterwise,
+                            description: updatedTestData.description,
+                            duration: updatedTestData.duration,
+                            questions: updatedTestData.questions,
+                            subjects: updatedTestData.subjects,
+                            difficulty: updatedTestData.difficulty,
+                            marks: updatedTestData.marks,
+                            negativeMarks: updatedTestData.negativeMarks,
+                            available: updatedTestData.available, // Make sure 'available' is included
+                        };
+
+
+                        // 3. Find and update the test in the aggregate list
+                        const testIndex = testsList.findIndex(t => t.id === originalTestId);
+                        if (testIndex > -1) {
+                            testsList[testIndex] = updatedMetadata;
+                             // Update the aggregate document within the transaction
+                            transaction.set(aggregateDocRef, { tests: testsList, lastUpdated: new Date().toISOString() });
+                        } else {
+                            // This case means the test exists in its own doc but not aggregate - potentially inconsistent state.
+                             console.warn(`Test ID ${originalTestId} not found in aggregate list during save. Adding it.`);
+                             testsList.push(updatedMetadata); // Add it anyway
+                             transaction.set(aggregateDocRef, { tests: testsList, lastUpdated: new Date().toISOString() });
+                            // Or: throw new Error(`Inconsistency: Test ${originalTestId} found but not in aggregate list.`);
+                        }
+
+                         // 4. Overwrite the main test document with the updated full data (using originalTestId path)
+                         // Ensure the data being saved includes the original ID if buildTestDataFromForm doesn't
+                         updatedTestData.id = originalTestId; // Ensure the ID in the data matches the doc ID
+                         transaction.set(testDocRef, updatedTestData);
+                    });
+
+
+                    console.log(`Successfully saved changes for test ${originalTestId}`);
+                     this.showPopupMessage(`Changes saved successfully for test "${updatedTestData.title}".`, "success");
+                    this.showListView(); // Go back to list view on success
+
+                 } catch (error) {
+                    console.error("Error saving changes:", error);
+                    this.setError(statusDiv, `Save Failed: ${error.message}`);
+                     statusDiv.setAttribute('data-status','error');
+                } finally {
+                    this.setIdle(saveBtn, 'Save Changes');
+                }
+            }
+
+
+            // --- Adapt functions from upload.html for the Edit context ---
+
+             addQuestionField(subject = '', marks = 4, context = 'upload', qData = null) {
+                 if (!this.questionTemplate) {
+                     console.error(`Cannot add question field (${context}): template is missing.`);
+                     const statusDiv = context === 'edit' ? this.elements.editStatus : this.elements.uiStatus; // Use correct status div
+                     this.setError(statusDiv, "Error adding question field: template missing.");
+                     return;
+                 }
+
+                const listElement = context === 'edit' ? this.elements.editQuestionsList : this.elements.questionsList;
+                const index = listElement.children.length; // Use current children count as index
+
+                const newQuestionNode = this.questionTemplate.cloneNode(true);
+                newQuestionNode.id = `${context}-question-${index}`; // Add context prefix to ID
+
+                // Populate basic fields
+                 const header = newQuestionNode.querySelector('.question-header h4');
+                if (header) header.textContent = `Question ${index + 1}`;
+                const subjectInput = newQuestionNode.querySelector('.question-subject');
+                if (subjectInput) subjectInput.value = subject || (qData ? qData.subject : ''); // Prioritize qData if present
+                const marksInput = newQuestionNode.querySelector('.question-marks');
+                if (marksInput) marksInput.value = marks !== undefined ? marks : (qData ? qData.marks : 4);
+
+
+                 // Populate with existing data if provided (qData)
+                 if (qData) {
+                    const typeSelect = newQuestionNode.querySelector('.question-type-select');
+                    if (typeSelect) typeSelect.value = qData.questionType || 'MCQ';
+                    const textInput = newQuestionNode.querySelector('.question-text');
+                    if (textInput) textInput.value = qData.questionText || '';
+                    const topicInput = newQuestionNode.querySelector('.question-topic');
+                    if(topicInput) topicInput.value = qData.topic || '';
+                    const solutionInput = newQuestionNode.querySelector('.solution');
+                    if(solutionInput) solutionInput.value = qData.solution || '';
+
+                    // Image URLs
+                    const qImageUrlInput = newQuestionNode.querySelector('.question-image-url');
+                    const qImageUrlDisplay = newQuestionNode.querySelector('.question-image-display');
+                    if (qImageUrlDisplay) {
+                        if (qData.questionImageUrl) {
+                            if(qImageUrlInput) qImageUrlInput.value = qData.questionImageUrl;
+                            qImageUrlDisplay.textContent = `URL: ${qData.questionImageUrl}`;
+                            qImageUrlDisplay.classList.remove('hidden');
+                            qImageUrlDisplay.dataset.url = qData.questionImageUrl;
+                        } else {
+                            if(qImageUrlInput) qImageUrlInput.value = '';
+                            qImageUrlDisplay.textContent = 'No question image URL.';
+                            qImageUrlDisplay.classList.add('hidden');
+                            delete qImageUrlDisplay.dataset.url;
+                        }
+                    }
+
+                    const solImageUrlInput = newQuestionNode.querySelector('.solution-image-url');
+                    const solImageUrlDisplay = newQuestionNode.querySelector('.solution-image-display');
+                     if (solImageUrlDisplay) {
+                        if (qData.solutionImageUrl) {
+                             if(solImageUrlInput) solImageUrlInput.value = qData.solutionImageUrl;
+                            solImageUrlDisplay.textContent = `URL: ${qData.solutionImageUrl}`;
+                            solImageUrlDisplay.classList.remove('hidden');
+                            solImageUrlDisplay.dataset.url = qData.solutionImageUrl;
+                        } else {
+                             if(solImageUrlInput) solImageUrlInput.value = '';
+                            solImageUrlDisplay.textContent = 'No solution image URL.';
+                            solImageUrlDisplay.classList.add('hidden');
+                            delete solImageUrlDisplay.dataset.url;
+                        }
+                    }
+
+
+                    // Type-specific fields
+                    const mcqFields = newQuestionNode.querySelector('.mcq-fields');
+                    const nvqFields = newQuestionNode.querySelector('.nvq-fields');
+                    const currentType = qData.questionType || 'MCQ';
+
+                    if (mcqFields) mcqFields.classList.toggle('hidden', currentType !== 'MCQ');
+                    if (nvqFields) nvqFields.classList.toggle('hidden', currentType !== 'NVQ');
+
+                    if (currentType === 'MCQ') {
+                         const options = qData.options || ['', '', '', ''];
+                         const optA = newQuestionNode.querySelector('.option-a');
+                         const optB = newQuestionNode.querySelector('.option-b');
+                         const optC = newQuestionNode.querySelector('.option-c');
+                         const optD = newQuestionNode.querySelector('.option-d');
+                         const correctMcq = newQuestionNode.querySelector('.correct-answer-mcq');
+                         if(optA) optA.value = options[0] || '';
+                         if(optB) optB.value = options[1] || '';
+                         if(optC) optC.value = options[2] || '';
+                         if(optD) optD.value = options[3] || '';
+                         if(correctMcq) correctMcq.value = qData.correctAnswer !== undefined ? qData.correctAnswer : 0;
+                    } else if (currentType === 'NVQ') {
+                         const nvqInput = newQuestionNode.querySelector('.correct-answer-nvq');
+                         if(nvqInput) nvqInput.value = qData.correctAnswer !== undefined ? qData.correctAnswer : '';
+                    }
+                 } else {
+                     // If not populating from data, ensure MCQ/NVQ visibility matches default select value
+                    const typeSelect = newQuestionNode.querySelector('.question-type-select');
+                    const mcqFields = newQuestionNode.querySelector('.mcq-fields');
+                    const nvqFields = newQuestionNode.querySelector('.nvq-fields');
+                     if(typeSelect && mcqFields && nvqFields) {
+                        mcqFields.classList.toggle('hidden', typeSelect.value !== 'MCQ');
+                        nvqFields.classList.toggle('hidden', typeSelect.value !== 'NVQ');
+                     }
+                 }
+
+
+                listElement.appendChild(newQuestionNode);
+                this.updateTotalMarks(context); // Update total marks for the correct form
+                 // Ensure Save/Upload button is enabled after adding a question
+                 const actionButton = context === 'edit' ? this.elements.saveChangesBtn : this.elements.uploadTestBtn;
+                 if(actionButton) actionButton.disabled = false;
+            }
+
+            // Adapt handleQuestionListClick to handle context
+            handleQuestionListClick(e, context = 'upload') {
+                 const button = e.target.closest('button');
+                 if (!button) return;
+                 const questionItem = button.closest('.question-item');
+                 if (!questionItem) return;
+
+                 const listElement = context === 'edit' ? this.elements.editQuestionsList : this.elements.questionsList;
+                 const titleInput = context === 'edit' ? this.elements.editTitle : this.elements.configTitle; // Check which title to use
+
+                 if (button.classList.contains('delete-btn')) {
+                    this.deleteQuestionField(questionItem, context); // Pass context
+                 } else if (button.classList.contains('question-image-btn') || button.classList.contains('solution-image-btn')) {
+                    const isQuestionImage = button.classList.contains('question-image-btn');
+                    const fileType = isQuestionImage ? 'question' : 'solution';
+                    const fileInput = questionItem.querySelector(isQuestionImage ? '.question-image-file' : '.solution-image-file');
+                    const statusDiv = questionItem.querySelector(isQuestionImage ? '.question-image-status' : '.solution-image-status');
+                    const urlInput = questionItem.querySelector(isQuestionImage ? '.question-image-url' : '.solution-image-url');
+                    const urlDisplay = questionItem.querySelector(isQuestionImage ? '.question-image-display' : '.solution-image-display');
+
+                    const testTitle = titleInput.value; // Use title from the correct form
+                    const questionIndex = Array.from(listElement.children).indexOf(questionItem);
+
+                     // --- IMPORTANT: Decide on image path strategy for edits ---
+                     // Option 1: Use ORIGINAL test ID/slug (safer to avoid orphans if title changes)
+                     const originalTestId = (context === 'edit') ? this.elements.editOriginalTestId.value : null;
+                     const idForPath = originalTestId || testTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                     // Option 2: Use CURRENT title (might orphan images if title is saved)
+                     // For now, using Option 1 (original ID if editing)
+                    this.triggerUpload(fileInput, idForPath, questionIndex, fileType, statusDiv, urlInput, button, urlDisplay);
+                 }
+            }
+
+
+            // Adapt deleteQuestionField
+            deleteQuestionField(questionItem, context = 'upload') {
+                if (questionItem) {
+                    questionItem.remove();
+                    this.reIndexQuestions(context); // Pass context
+                    this.updateTotalMarks(context); // Pass context
+                     // Disable save/upload button if no questions left
+                     const uploadBtn = context === 'edit' ? this.elements.saveChangesBtn : this.elements.uploadTestBtn;
+                     const listElement = context === 'edit' ? this.elements.editQuestionsList : this.elements.questionsList;
+                    if(uploadBtn && listElement) {
+                         uploadBtn.disabled = listElement.children.length === 0;
+                    }
+                }
+            }
+
+            // Adapt reIndexQuestions
+            reIndexQuestions(context = 'upload') {
+                 const listElement = context === 'edit' ? this.elements.editQuestionsList : this.elements.questionsList;
+                const questionItems = listElement.querySelectorAll('.question-item');
+                questionItems.forEach((item, index) => {
+                    const header = item.querySelector('.question-header h4');
+                    if (header) {
+                        header.textContent = `Question ${index + 1}`;
+                    }
+                    item.id = `${context}-question-${index}`; // Update ID with context prefix
+                });
+                // Note: this.questionCounter is mainly for adding, re-indexing adjusts numbering
+            }
+
+            // Adapt handleQuestionListChange
+            handleQuestionListChange(e, context = 'upload') {
+                const target = e.target;
+                const questionItem = target.closest('.question-item');
+                if (!questionItem) return;
+
+                if (target.classList.contains('question-type-select')) {
+                    const type = target.value;
+                    const mcqFields = questionItem.querySelector('.mcq-fields');
+                    const nvqFields = questionItem.querySelector('.nvq-fields');
+                    if (mcqFields) mcqFields.classList.toggle('hidden', type !== 'MCQ');
+                    if (nvqFields) nvqFields.classList.toggle('hidden', type !== 'NVQ');
+                } else if (target.classList.contains('question-marks')) {
+                    this.updateTotalMarks(context); // Pass context
+                }
+            }
+
+             // Adapt updateTotalMarks
+            updateTotalMarks(context = 'upload') {
+                let total = 0;
+                 const listElement = context === 'edit' ? this.elements.editQuestionsList : this.elements.questionsList;
+                 const totalMarksInput = context === 'edit' ? this.elements.editTotalMarks : this.elements.totalMarks;
+
+                listElement.querySelectorAll('.question-marks').forEach(input => {
+                    total += parseFloat(input.value) || 0;
+                });
+                 totalMarksInput.value = total;
+            }
+
+
+            // Adapt buildTestDataFromForm - VERY IMPORTANT
+             buildTestDataFromForm(context = 'upload', originalId = null) {
+                 // Determine which form elements to read from
+                 const titleInput = context === 'edit' ? this.elements.editTitle : this.elements.configTitle; // Use configTitle for 'upload' context
+                 const typeInput = context === 'edit' ? this.elements.editType : this.elements.configType;
+                 const syllabusTypeInput = context === 'edit' ? this.elements.editSyllabusType : this.elements.configSyllabusType;
+                 const descriptionInput = context === 'edit' ? this.elements.editDescription : this.elements.description;
+                 const durationInput = context === 'edit' ? this.elements.editDuration : this.elements.duration;
+                 const negativeMarksInput = context === 'edit' ? this.elements.editNegativeMarks : this.elements.configNegativeMarks;
+                 const subjectsInput = context === 'edit' ? this.elements.editSubjects : this.elements.configSubjects; // jQuery objects
+                 const questionsListElem = context === 'edit' ? this.elements.editQuestionsList : this.elements.questionsList;
+
+                 const title = titleInput.value.trim();
+                 if (!title) throw new Error("Test Title is required.");
+                 // Use original ID if editing, otherwise generate from title
+                 const testId = (context === 'edit' && originalId) ? originalId : title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+                 if (!testId) throw new Error("Could not determine Test ID.");
+
+
+                const negativeMarksValueRaw = negativeMarksInput.value;
+                 if (negativeMarksValueRaw === '' || isNaN(parseFloat(negativeMarksValueRaw))) {
+                     throw new Error("Valid Negative Marks value is required.");
+                 }
+                 const negativeMarksValue = parseFloat(negativeMarksValueRaw);
+
+                const subjectsArray = subjectsInput.val() || [];
+                 if (subjectsArray.length === 0) throw new Error("At least one Subject must be selected.");
+
+                const isChapterwise = syllabusTypeInput.value === 'Chapterwise';
+
+                const questionsData = Array.from(questionsListElem.querySelectorAll('.question-item')).map((q, i) => {
+                     // Same logic as before, reading elements within 'q'
+                     const questionType = q.querySelector('.question-type-select').value;
+                     const questionText = q.querySelector('.question-text').value.trim();
+                     const solutionText = q.querySelector('.solution').value.trim();
+                     const subject = q.querySelector('.question-subject').value.trim();
+                     const topic = q.querySelector('.question-topic').value.trim();
+                     const marksValue = q.querySelector('.question-marks').value;
+
+                     if (!questionText || !solutionText || !subject || !topic || marksValue === '' || isNaN(parseFloat(marksValue)) || parseFloat(marksValue) < 0) {
+                         throw new Error(`Question ${i + 1} is incomplete. Check text, solution, subject, topic, and marks.`);
+                     }
+
+                    const questionEntry = {
+                        id: i + 1, // Re-index based on current order
+                        subject: subject, topic: topic, questionType: questionType, questionText: questionText,
+                        marks: parseFloat(marksValue), negativeMarks: negativeMarksValue, solution: solutionText,
+                    };
+
+                    const qImageUrl = q.querySelector('.question-image-url').value;
+                    const solImageUrl = q.querySelector('.solution-image-url').value;
+                    if (qImageUrl) questionEntry.questionImageUrl = qImageUrl;
+                    if (solImageUrl) questionEntry.solutionImageUrl = solImageUrl;
+
+                    if (questionType === 'MCQ') {
+                         const options = [
+                             q.querySelector('.option-a').value.trim(), q.querySelector('.option-b').value.trim(),
+                             q.querySelector('.option-c').value.trim(), q.querySelector('.option-d').value.trim(),
+                         ];
+                         if (options.some(o => o === '')) throw new Error(`Question ${i + 1} (MCQ): All 4 options are required.`);
+                         questionEntry.options = options;
+                         questionEntry.correctAnswer = parseInt(q.querySelector('.correct-answer-mcq').value, 10);
+                     } else if (questionType === 'NVQ') {
+                         const correctAnswerValue = q.querySelector('.correct-answer-nvq').value.trim();
+                         if (correctAnswerValue === '' || isNaN(parseFloat(correctAnswerValue))) throw new Error(`Question ${i + 1} (NVQ): A valid Correct Answer Value is required.`);
+                         questionEntry.options = ["nil"];
+                         questionEntry.correctAnswer = parseFloat(correctAnswerValue);
+                     }
+                    return questionEntry;
+                });
+
+                if (questionsData.length === 0) throw new Error("Please add at least one question.");
+
+                const totalMarks = questionsData.reduce((sum, q) => sum + q.marks, 0);
+                 const durationValue = durationInput.value;
+                 if (durationValue === '' || isNaN(parseInt(durationValue, 10)) || parseInt(durationValue, 10) <= 0) {
+                     throw new Error("Valid Test Duration (in minutes) is required.");
+                 }
+
+                 // Find the original 'available' status if editing, default to true otherwise
+                 let currentAvailability = true; // Default for new tests
+                 if(context === 'edit' && originalId && this.currentTestsData){
+                    const originalTestData = this.currentTestsData.find(t => t.id === originalId);
+                    if(originalTestData && originalTestData.available !== undefined){ // Check if 'available' exists
+                        currentAvailability = originalTestData.available;
+                    } else {
+                         console.warn(`Could not find original 'available' status for test ${originalId}, defaulting to true.`);
+                    }
+                 }
+
+
+                return {
+                    id: testId, title: title, type: typeInput.value, Chapterwise: isChapterwise,
+                    description: descriptionInput.value.trim(), duration: parseInt(durationValue, 10),
+                    questions: questionsData.length, subjects: subjectsArray, difficulty: 'medium', // Keep difficulty default for now
+                    marks: totalMarks, negativeMarks: negativeMarksValue,
+                    available: currentAvailability, // Preserve original availability status during edit save
+                    questions_data: questionsData
+                };
+            }
+
+            // --- Show/Close Popup (Generic) ---
+             showPopupMessage(message, type = "success") {
+                 if (this.elements.modalMessage) {
+                     this.elements.modalMessage.textContent = message;
+                     // Optional: Change modal title/icon based on type
+                     const titleElement = document.getElementById('modal-title');
+                     if(titleElement) titleElement.textContent = (type === 'error' ? 'Error!' : 'Success!');
+                 }
+                  if (this.elements.successModal) {
+                     this.elements.successModal.classList.remove('hidden');
+                 }
+             }
+             closeSuccessPopup() { // Renamed from upload-specific one
+                 if (this.elements.successModal) {
+                    this.elements.successModal.classList.add('hidden');
+                 }
+                 // Resetting form is now handled specifically after successful SAVE, not just any popup close.
+             }
+
+
+            // --- General UI Helpers (Copied from upload.html) ---
+             setLoading(btn, statusDiv, text) { /* ... */
+                if (btn) {
+                     btn.disabled = true;
+                     btn.innerHTML = `<div class="spinner mr-2 inline-block"></div><span>${text}</span>`;
+                 }
+                 if (statusDiv) {
+                    statusDiv.textContent = text;
+                    statusDiv.className = 'status text-gray-600';
+                    statusDiv.setAttribute('data-status', 'loading');
+                 } }
+             setError(statusDiv, message) { /* ... */
+                  if (statusDiv) {
+                    statusDiv.textContent = message;
+                    statusDiv.className = 'status text-red-700';
+                    statusDiv.setAttribute('data-status', 'error');
+                 }}
+             setSuccess(statusDiv, message) { /* ... */
+                 if (statusDiv) {
+                    statusDiv.textContent = message;
+                    statusDiv.className = 'status text-green-700';
+                     statusDiv.setAttribute('data-status', 'success');
+                 }}
+            setIdle(btn, text) {
+                 if (btn) {
+                     // --- FIX: Simplify logic ---
+                     // Check if it's the save button and we are NOT in edit mode OR if it's the upload button and there are no questions
+                     const listElement = (btn === this.elements.saveChangesBtn) ? this.elements.editQuestionsList : this.elements.questionsList;
+                     let shouldBeDisabled = false;
+
+                     if (btn === this.elements.saveChangesBtn) {
+                         shouldBeDisabled = !this.editingTestId || (listElement && listElement.children.length === 0);
+                     } else if (btn === this.elements.uploadTestBtn) {
+                         // This button is on upload.html, but keep logic if needed elsewhere
+                         shouldBeDisabled = !listElement || listElement.children.length === 0;
+                     }
+                      // For other buttons (like process excel, add question, cancel, login etc.), they usually don't need this complex check.
+                      // Let's assume they should just be enabled unless specifically disabled during loading.
+
+                    btn.disabled = shouldBeDisabled;
+                    btn.innerHTML = `<span>${text}</span>`;
+                 }
+            }
+
+
+        } // End Class ManageTests
+
+        // Initialize the page class on document ready
+        $(document).ready(() => {
+            window.manager = new ManageTests();
+        });
+    </script>
+
+</body>
+</html>
+

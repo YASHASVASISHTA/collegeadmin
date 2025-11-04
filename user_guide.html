@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Guide: Test Management - Exam Portal</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        :root {
+            --primary: #15803d; /* Tailwind green-700 */
+            --primary-light: #4ade80; /* Tailwind green-400 */
+            --primary-bg: #f0fdf4; /* Tailwind green-50 */
+        }
+        .step-card {
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+        .step-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
+        }
+        .step-number {
+            background-color: var(--primary);
+            min-width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+            font-weight: bold;
+            border-radius: 9999px;
+            box-shadow: 0 4px 6px -1px rgba(21, 128, 61, 0.5);
+        }
+         .tip-box {
+            background-color: #e0f2fe; /* blue-100 */
+            border-left: 5px solid #3b82f6; /* blue-500 */
+        }
+        .danger-box {
+             background-color: #fee2e2; /* red-100 */
+            border-left: 5px solid #dc2626; /* red-600 */
+        }
+        .upload-section {
+            border-top: 1px dashed #d1d5db; /* gray-300 */
+            padding-top: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .upload-section:first-child {
+            border-top: none;
+            padding-top: 0;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-700 pt-20">
+
+    <!-- Responsive Navigation Bar (Simplified for guide page, assuming it's part of the portal) -->
+    <nav class="bg-white border-b border-gray-200 shadow-sm fixed top-0 left-0 right-0 z-50 h-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo/Brand -->
+                <div class="flex-shrink-0 flex items-center">
+                     <span class="text-xl font-bold text-green-700">Test Management Portal</span>
+                </div>
+                <!-- Desktop Menu -->
+                <div class="flex items-center space-x-4">
+                    <a href="upload.html" class="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium">Upload Tests</a>
+                    <a href="manage.html" class="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium">Manage Tests</a>
+                 
+                    <a href="#" class="text-green-700 border-b-2 border-green-700 px-3 py-2 text-sm font-medium" aria-current="page">User Guide</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container max-w-5xl mx-auto mt-8 mb-12 px-4">
+        <header class="text-center mb-10 p-6 bg-white rounded-xl shadow-lg border border-gray-200">
+            <h1 class="text-3xl font-extrabold text-green-800 mb-2">Test Management User Guide</h1>
+            <p class="text-lg text-gray-600">A clear, step-by-step guide to uploading and managing your examination tests.</p>
+        </header>
+
+        <!-- Section: Uploading Tests -->
+        <div class="mb-12">
+            <h2 class="text-2xl font-bold text-green-700 mb-6 border-b pb-2">Part 1: Uploading New Tests (Upload Tests Page)</h2>
+
+            <p class="mb-6 text-gray-700">The **Upload Tests** page offers three tabs, each providing a way to submit test data. Choose the method that best suits your existing data format.</p>
+
+            <!-- ### Method 1: Create with Form (Recommended for New Tests) -->
+            <div class="upload-section">
+                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center space-x-2">
+                    <span class="text-green-600 text-2xl">📝</span>
+                    <span>Method 1: Create with Form</span>
+                </h3>
+
+                <!-- Step 1 (Modified) -->
+                <div class="step-card bg-white p-6 rounded-lg shadow-md mb-4 flex items-start space-x-4">
+                    <div class="step-number flex-shrink-0">1</div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-1">Configure & Generate</h4>
+                        <ul class="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                            <li>Fill in **Test Title**, **Exam Type**, **Syllabus Type**, and **Negative Marks**.</li>
+                            <li>Select **Subjects**, define the **Number of Questions** and **Marks per Question** for each.</li>
+                            <li>Click **Generate Test Form**.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Step 2 (Modified) -->
+                <div class="step-card bg-white p-6 rounded-lg shadow-md mb-6 flex items-start space-x-4">
+                    <div class="step-number flex-shrink-0">2</div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-1">Enter Question Data</h4>
+                        <p class="text-gray-600 mb-2">Complete the fields for the entire test, including **Description**, **Duration**, **Question Text**, **Subject**, **Topic**, **Solution**, and **Correct Answer** (MCQ option or NVQ number).</p>
+                        <div class="tip-box p-3 mt-2 rounded-md text-sm text-blue-800">
+                            <p class="font-semibold mb-1">Tip: Image Upload</p>
+                            <p>For diagrams, use the **Upload Qs. Image** and **Upload Sol. Image** buttons *within each question block*. The system handles the hosting and provides the URL automatically.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ### Method 2: Upload from Excel -->
+            <div class="upload-section">
+                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center space-x-2">
+                    <span class="text-green-600 text-2xl">📊</span>
+                    <span>Method 2: Upload from Excel (For Bulk Upload)</span>
+                </h3>
+                <p class="text-gray-600 mb-4">This method is ideal for bulk imports. Your spreadsheet must strictly follow the required template format.</p>
+
+                <!-- Step 1 (Excel) -->
+                <div class="step-card bg-white p-6 rounded-lg shadow-md mb-4 flex items-start space-x-4">
+                    <div class="step-number flex-shrink-0">1</div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-1">Prepare & Configure</h4>
+                        <ul class="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                            <li>Click **Download Excel Template** to get the exact required column structure.</li>
+                            <li>Fill the template carefully, ensuring column headers match.</li>
+                            <li>Fill in the metadata on the portal (**Test Title**, **Exam Type**, **Subjects**, etc.).</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Step 2 (Excel) -->
+                <div class="step-card bg-white p-6 rounded-lg shadow-md mb-6 flex items-start space-x-4">
+                    <div class="step-number flex-shrink-0">2</div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-1">Process & Review</h4>
+                        <ul class="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                            <li>Upload your prepared Excel file (.xlsx) and click **Process Excel & Preview Form**.</li>
+                            <li>The system will parse the data and automatically switch you to the **Create with Form** tab, populating all fields.</li>
+                            <li>**Review all questions** for correct parsing, especially complex text or images.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ### Method 3: Upload from JSON -->
+            <div class="upload-section">
+                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center space-x-2">
+                    <span class="text-green-600 text-2xl">💻</span>
+                    <span>Method 3: Upload from JSON (For Programmatic Use)</span>
+                </h3>
+                <p class="text-gray-600 mb-4">This method requires advanced knowledge of the system's data schema and is best used for direct data migration or programmatic imports.</p>
+
+                <!-- Step 1 (JSON) -->
+                <div class="step-card bg-white p-6 rounded-lg shadow-md mb-4 flex items-start space-x-4">
+                    <div class="step-number flex-shrink-0">1</div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-1">Format Data</h4>
+                        <ul class="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                            <li>Ensure your data strictly matches the **Required JSON Format** shown below the input box.</li>
+                            <li>The JSON must be a single object containing all test metadata and the `questions_data` array.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Step 2 (JSON) -->
+                <div class="step-card bg-white p-6 rounded-lg shadow-md mb-6 flex items-start space-x-4">
+                    <div class="step-number flex-shrink-0">2</div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-1">Paste & Upload</h4>
+                        <ul class="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                            <li>Paste the entire valid JSON object into the text area.</li>
+                            <li>Click **Upload JSON**. The test is uploaded directly to the database without a review step.</li>
+                        </ul>
+                        <div class="danger-box p-3 mt-2 rounded-md text-sm text-red-800">
+                            <p class="font-semibold mb-1">Warning: Data Validation</p>
+                            <p>Errors in the JSON structure (missing fields, incorrect types) will result in an upload failure.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Final Upload Step (Applies to all) -->
+            <div class="step-card bg-white p-6 rounded-lg shadow-md mb-6 flex items-start space-x-4">
+                <div class="step-number flex-shrink-0">3</div>
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Final Upload (Applies to Form & Excel Review)</h3>
+                    <p class="text-gray-600">Once satisfied, click the **Upload Test to Database** button. The system saves the full test data and its metadata to the portal's database.</p>
+                    <div class="danger-box p-4 mt-4 rounded-md text-sm text-red-800">
+                        <p class="font-semibold mb-1">Crucial Warning: Test ID</p>
+                        <p>The **Test Title** is used to generate a unique ID. If a test with the same ID already exists, the system will ask for confirmation to **overwrite** the previous version. Be careful when overwriting live tests!</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        ---
+
+        <!-- Section: Managing Tests -->
+        <div class="mb-12">
+            <h2 class="text-2xl font-bold text-green-700 mb-6 border-b pb-2">Part 2: Managing and Editing Tests (Manage Tests Page)</h2>
+
+            <p class="mb-6 text-gray-700">The **Manage Tests** page provides a centralized list of all uploaded tests and allows you to control their availability and content.</p>
+
+            <!-- Step A -->
+            <div class="step-card bg-white p-6 rounded-lg shadow-md mb-6 flex items-start space-x-4">
+                <div class="step-number flex-shrink-0">A</div>
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Control Availability</h3>
+                    <p class="text-gray-600">The **Available** column contains a toggle switch for every test. This is the **primary control** to release or hide a test from student view.
+                        <ul class="list-disc list-inside space-y-1 text-gray-600 ml-4 mt-2">
+                            <li>**Green Toggle (On/Checked):** Test is visible and accessible to students.</li>
+                            <li>**Gray Toggle (Off/Unchecked):** Test is hidden and inaccessible to students.</li>
+                        </ul>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Step B -->
+            <div class="step-card bg-white p-6 rounded-lg shadow-md mb-6 flex items-start space-x-4">
+                <div class="step-number flex-shrink-0">B</div>
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Edit Test Content</h3>
+                    <p class="text-gray-600">Click the **Edit** button next to any test to access the full edit form. This form mirrors the "Create with Form" upload process and is pre-populated with the existing test data.</p>
+                    <ul class="list-disc list-inside space-y-1 text-gray-600 ml-4 mt-2">
+                        <li>You can modify test details (Title, Duration, Marks) and the content of individual questions (Text, Options, Correct Answer, Solutions).</li>
+                        <li>Use the **+ Add Question** button to add new questions or the **Delete Question** button to remove existing ones.</li>
+                    </ul>
+                    <div class="tip-box p-4 mt-4 rounded-md text-sm text-blue-800">
+                        <p class="font-semibold mb-1">Pro Tip: Image Management</p>
+                        <p>If you upload a new image while editing, the old image URL is replaced. If you change the test title while editing, the new image upload path will still use the **original Test ID** to keep related files organized.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step C -->
+            <div class="step-card bg-white p-6 rounded-lg shadow-md mb-6 flex items-start space-x-4">
+                <div class="step-number flex-shrink-0">C</div>
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Save Changes</h3>
+                    <p class="text-gray-600">After making any modifications, click the **Save Changes** button. Your updates are instantly applied to the database, ensuring students see the correct, updated version immediately (if the test is currently **Available**).</p>
+                </div>
+            </div>
+
+        </div>
+
+        ---
+
+        <!-- Section: Support -->
+        <div class="text-center p-8 mt-12 bg-green-50 rounded-xl border border-green-200 shadow-md">
+            <h2 class="text-2xl font-bold text-green-700 mb-3">Support and Queries</h2>
+            <p class="text-lg text-gray-700 mb-2">If you have any technical issues, questions about formatting, or database errors, please contact our support team:</p>
+            <p class="text-2xl font-extrabold text-green-800">Email: <a href="mailto:examacepro@gmail.com" class="hover:underline">examacepro@gmail.com</a></p>
+            <p class="text-sm text-gray-500 mt-4">We aim to respond to all queries within 24 hours.</p>
+        </div>
+
+    </div>
+
+</body>
+</html>
